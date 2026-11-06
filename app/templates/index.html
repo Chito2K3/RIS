@@ -917,7 +917,15 @@
             excluded_files: checked
           })
         });
-        const data = await res.json();
+        const rawText = await res.text();
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch (parseErr) {
+          finishProgressAnimation(false);
+          showStatus("&#10060; The running server is from an older session before this update. Please close the running command prompt window and double-click <code>run_ris_app.bat</code> again.", "error");
+          return;
+        }
         if (!data.ok) {
           finishProgressAnimation(false);
           showStatus("&#10060; Error excluding RIS files: " + (data.error || "Unknown error"), "error");

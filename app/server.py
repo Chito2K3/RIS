@@ -88,7 +88,13 @@ class RISAppHandler(BaseHTTPRequestHandler):
             self.wfile.write(data)
             return
 
-        self.send_error(404, "Not Found")
+        if parsed.path == "/api/shutdown":
+            self._send_json({"ok": True, "message": "Shutting down server..."})
+            import threading
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            return
+
+        self._send_json({"ok": False, "error": f"Unknown GET endpoint: {parsed.path}"}, status=404)
 
     def do_POST(self):
         global LAST_RUN_STATE
@@ -273,7 +279,13 @@ class RISAppHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": False, "error": str(e), "traceback": tb}, status=500)
             return
 
-        self.send_error(404, "Not Found")
+        if parsed.path == "/api/shutdown":
+            self._send_json({"ok": True, "message": "Shutting down server..."})
+            import threading
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            return
+
+        self._send_json({"ok": False, "error": f"Unknown GET endpoint: {parsed.path}"}, status=404)
 
 def run_server(port=5050):
     server = HTTPServer(("127.0.0.1", port), RISAppHandler)
