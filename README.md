@@ -26,3 +26,4 @@ Automated web application for **Amang Rodriguez Memorial Medical Center (ARMMC) 
      python app/server.py 5050
      ```
 3. Open `http://127.0.0.1:5050` in your browser.
+
