@@ -921,6 +921,16 @@
         if (!pendingExcludedFiles.includes(fn)) {
           pendingExcludedFiles.push(fn);
         }
+        // If user checked PHARMACY_RIS_*.xlsx or RIS - *_POPULATED.xlsx, also exclude the other Pharmacy file automatically
+        if (fn.toUpperCase().includes("PHARMACY_RIS_") || fn.toUpperCase().includes("POPULATED")) {
+          currentSummaryRows.forEach(r => {
+            if (r.filename.toUpperCase().includes("PHARMACY_RIS_") || r.filename.toUpperCase().includes("POPULATED")) {
+              if (!pendingExcludedFiles.includes(r.filename)) {
+                pendingExcludedFiles.push(r.filename);
+              }
+            }
+          });
+        }
       });
 
       const remainingRows = currentSummaryRows.filter(r => !pendingExcludedFiles.includes(r.filename));

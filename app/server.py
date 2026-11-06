@@ -146,16 +146,23 @@ class RISAppHandler(BaseHTTPRequestHandler):
                 excl_dir = os.path.join(final_dir, "_EXCLUDED_RIS")
                 os.makedirs(excl_dir, exist_ok=True)
 
+                excluded_set = set(os.path.basename(f) for f in excluded_files)
+                # If the user excluded any PHARMACY_RIS_*.xlsx file, also automatically exclude
+                # the Master Pharmacy file (RIS - *_POPULATED.xlsx) if present, and vice versa!
+                if any("PHARMACY_RIS_" in f.upper() or "POPULATED" in f.upper() for f in excluded_set):
+                    for f in os.listdir(final_dir):
+                        if ("PHARMACY_RIS_" in f.upper() or "POPULATED" in f.upper()) and f.lower().endswith(".xlsx"):
+                            excluded_set.add(f)
+
                 moved_files = []
-                for fname in excluded_files:
-                    safe_fn = os.path.basename(fname)
+                for safe_fn in sorted(excluded_set):
                     src_p = os.path.join(final_dir, safe_fn)
                     dst_p = os.path.join(excl_dir, safe_fn)
                     if os.path.exists(src_p) and os.path.isfile(src_p):
                         shutil.move(src_p, dst_p)
                         moved_files.append(safe_fn)
 
-                rsmi_info = generate_rsmi_from_folder(final_dir, excluded_files=excluded_files)
+                rsmi_info = generate_rsmi_from_folder(final_dir, excluded_files=list(excluded_set))
                 excluded_on_disk = sorted([
                     f for f in os.listdir(excl_dir)
                     if f.lower().endswith(".xlsx") and not f.startswith("~$")

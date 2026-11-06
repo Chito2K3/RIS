@@ -39,14 +39,8 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
         and f not in excluded_set
     ])
 
-    ordered_files = []
-    # Put Master populated RIS file first if present
-    for f in all_files:
-        if (master_filename and f == master_filename) or ("POPULATED" in f.upper()):
-            ordered_files.append(f)
-    for f in all_files:
-        if f not in ordered_files:
-            ordered_files.append(f)
+    # Keep purely alphabetical order so all PHARMACY files are grouped together cleanly
+    ordered_files = list(all_files)
 
     rsmi_rows = []
     summary_rows = []
