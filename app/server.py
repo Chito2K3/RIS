@@ -62,6 +62,25 @@ class RISAppHandler(BaseHTTPRequestHandler):
             })
             return
 
+        if parsed.path == "/api/download_rsmi":
+            qs = parse_qs(parsed.query)
+            folder = qs.get("folder", [""])[0]
+            fmt = qs.get("fmt", ["xlsx"])[0]
+            fname = "RSMI.xls" if fmt == "xls" else "RSMI.xlsx"
+            fpath = os.path.join(folder, fname)
+            if not folder or not os.path.exists(fpath):
+                self._send_json({"error": f"{fname} not found"}, status=404)
+                return
+            with open(fpath, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
         if parsed.path == "/api/download_zip":
             qs = parse_qs(parsed.query)
             folder = qs.get("folder", [""])[0]
@@ -112,8 +131,9 @@ class RISAppHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": False, "error": f"Folder not found: {folder}"}, status=400)
             return
 
-        if parsed.path == "/api/update_rsmi_exclusions":
+        if parsed.path in ("/api/update_rsmi_exclusions", "/api/save_overwrite_rsmi"):
             try:
+                import datetime
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
                 final_dir = os.path.normpath(body.get("final_dir", ""))
@@ -135,15 +155,17 @@ class RISAppHandler(BaseHTTPRequestHandler):
                         shutil.move(src_p, dst_p)
                         moved_files.append(safe_fn)
 
-                rsmi_info = generate_rsmi_from_folder(final_dir)
+                rsmi_info = generate_rsmi_from_folder(final_dir, excluded_files=excluded_files)
                 excluded_on_disk = sorted([
                     f for f in os.listdir(excl_dir)
                     if f.lower().endswith(".xlsx") and not f.startswith("~$")
                 ])
+                saved_at = datetime.datetime.now().strftime("%I:%M:%S %p")
                 self._send_json({
                     "ok": True,
                     "moved_files": moved_files,
                     "excluded_count_total": len(excluded_on_disk),
+                    "saved_at": saved_at,
                     "rsmi": rsmi_info,
                 })
             except Exception as e:

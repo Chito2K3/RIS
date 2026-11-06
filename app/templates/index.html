@@ -651,11 +651,20 @@
             <button type="button" class="btn-outline" style="padding:7px 12px; font-size:0.83rem;" onclick="toggleAllExclusions(false)">Clear Selection</button>
             <button type="button" class="btn-outline" id="btnRestoreExcl" style="padding:7px 12px; font-size:0.83rem; display:none;" onclick="restoreExcludedRis(this)">&#8634; Restore Excluded RIS Files</button>
           </div>
-          <div>
-            <button type="button" class="btn-danger-proceed" id="btnProceedExclude" onclick="proceedExcludeSelected(this)" disabled>
-              &#9654; Proceed — Exclude Selected &amp; Update RSMI
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-danger-proceed" id="btnProceedExclude" onclick="excludeCheckedRowsFromList()" disabled>
+              &#10006; 1. Exclude Selected from List
+            </button>
+            <button type="button" class="btn-accent" id="btnSaveOverwriteRsmi" onclick="saveAndOverwriteRsmi(this)">
+              &#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)
+            </button>
+            <button type="button" class="btn-outline" id="btnDownloadRsmi" onclick="downloadRsmiFile(this)" style="padding:10px 14px; font-size:0.86rem;">
+              &#11015; Download RSMI.xlsx
             </button>
           </div>
+        </div>
+        <div id="unsavedRsmiNotice" style="display:none; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:0.88rem; font-weight:600;">
+          &#9888; You have excluded RIS items from the list above. Click <strong>"&#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)"</strong> to overwrite the RSMI file in <code>02_RIS_FINAL/</code>!
         </div>
 
         <div class="table-scroll">
@@ -688,6 +697,8 @@
     let currentCleanedDir = "";
     let currentFinalDir = "";
     let progressTimer = null;
+    let pendingExcludedFiles = [];
+    let currentSummaryRows = [];
 
     function updateFolderDefault() {
       const m = document.getElementById("month_name").value;
@@ -826,6 +837,8 @@
         document.getElementById("statWardQty").textContent = (r.issuance.total_qty || 0).toLocaleString();
       }
 
+      pendingExcludedFiles = [];
+      document.getElementById("unsavedRsmiNotice").style.display = "none";
       renderRsmiTable(r.rsmi);
 
       document.getElementById("resultsSection").style.display = "block";
@@ -833,6 +846,7 @@
     }
 
     function renderRsmiTable(rsmi) {
+      currentSummaryRows = rsmi.summary_rows || [];
       document.getElementById("statRisFiles").textContent = rsmi.total_ris_files.toLocaleString();
       document.getElementById("statRsmiRows").textContent = rsmi.total_medicine_rows.toLocaleString();
 
@@ -841,7 +855,7 @@
 
       const tbody = document.getElementById("rsmiTableBody");
       tbody.innerHTML = "";
-      rsmi.summary_rows.forEach((row, idx) => {
+      currentSummaryRows.forEach((row, idx) => {
         const tr = document.createElement("tr");
         tr.dataset.filename = row.filename;
         tr.dataset.risNo = row.ris_no || "";
@@ -899,22 +913,51 @@
       }
     }
 
-    async function proceedExcludeSelected(btnEl) {
+    function excludeCheckedRowsFromList() {
       const checked = Array.from(document.querySelectorAll(".row-excl-chk:checked")).map(c => c.value);
-      if (checked.length === 0 || !currentFinalDir) return;
+      if (checked.length === 0) return;
+
+      checked.forEach(fn => {
+        if (!pendingExcludedFiles.includes(fn)) {
+          pendingExcludedFiles.push(fn);
+        }
+      });
+
+      const remainingRows = currentSummaryRows.filter(r => !pendingExcludedFiles.includes(r.filename));
+      const remItems = remainingRows.reduce((acc, r) => acc + r.item_count, 0);
+      renderRsmiTable({
+        total_ris_files: remainingRows.length,
+        total_medicine_rows: remItems,
+        summary_rows: remainingRows
+      });
+
+      document.getElementById("btnRestoreExcl").style.display = "inline-flex";
+      document.getElementById("unsavedRsmiNotice").style.display = "block";
+      showStatus(`&#9888; Removed <strong>${checked.length}</strong> RIS item(s) from the list (${pendingExcludedFiles.length} total excluded). Now click <strong>"&#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)"</strong> to overwrite the RSMI file on disk!`, "loading");
+    }
+
+    async function saveAndOverwriteRsmi(btnEl) {
+      if (!currentFinalDir) return;
+      // Also include any currently checked rows in case the user clicked Save & Overwrite directly after checking boxes!
+      const currentlyChecked = Array.from(document.querySelectorAll(".row-excl-chk:checked")).map(c => c.value);
+      currentlyChecked.forEach(fn => {
+        if (!pendingExcludedFiles.includes(fn)) {
+          pendingExcludedFiles.push(fn);
+        }
+      });
 
       const origHtml = btnEl.innerHTML;
       btnEl.disabled = true;
-      btnEl.innerHTML = `<span class="spinner"></span> Excluding ${checked.length} RIS &amp; Updating RSMI...`;
-      startProgressAnimation(`Excluding ${checked.length} selected RIS file(s) and rebuilding RSMI.xlsx...`);
+      btnEl.innerHTML = `<span class="spinner"></span> Saving &amp; Overwriting RSMI...`;
+      startProgressAnimation(`Overwriting RSMI.xlsx and RSMI.xls inside 02_RIS_FINAL (${pendingExcludedFiles.length} RIS excluded)...`);
 
       try {
-        const res = await fetch("/api/update_rsmi_exclusions", {
+        const res = await fetch("/api/save_overwrite_rsmi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             final_dir: currentFinalDir,
-            excluded_files: checked
+            excluded_files: pendingExcludedFiles
           })
         });
         const rawText = await res.text();
@@ -923,27 +966,40 @@
           data = JSON.parse(rawText);
         } catch (parseErr) {
           finishProgressAnimation(false);
-          showStatus("&#10060; The running server is from an older session before this update. Please close the running command prompt window and double-click <code>run_ris_app.bat</code> again.", "error");
+          showStatus("&#10060; Server error parsing response. Please refresh the page.", "error");
           return;
         }
         if (!data.ok) {
           finishProgressAnimation(false);
-          showStatus("&#10060; Error excluding RIS files: " + (data.error || "Unknown error"), "error");
+          showStatus("&#10060; Error overwriting RSMI: " + (data.error || "Unknown error"), "error");
           return;
         }
         finishProgressAnimation(true);
+        pendingExcludedFiles = [];
+        document.getElementById("unsavedRsmiNotice").style.display = "none";
         renderRsmiTable(data.rsmi);
         if (data.excluded_count_total > 0) {
           document.getElementById("btnRestoreExcl").style.display = "inline-flex";
         }
-        showStatus(`&#9989; Excluded <strong>${data.moved_files.length}</strong> RIS file(s) and updated <code>RSMI.xlsx</code>! Remaining in RSMI: <strong>${data.rsmi.total_ris_files}</strong> RIS files (<strong>${data.rsmi.total_medicine_rows.toLocaleString()}</strong> medicine rows).`, "success");
+        showStatus(`&#9989; <strong>Saved &amp; Overwritten!</strong> Both <code>RSMI.xlsx</code> and <code>RSMI.xls</code> in <code>02_RIS_FINAL/</code> have been overwritten at <strong>${data.saved_at}</strong> with <strong>${data.rsmi.total_ris_files}</strong> RIS files (<strong>${data.rsmi.total_medicine_rows.toLocaleString()}</strong> medicine rows).`, "success");
       } catch (err) {
         finishProgressAnimation(false);
         showStatus("&#10060; Request failed: " + err.message, "error");
       } finally {
+        btnEl.disabled = false;
         btnEl.innerHTML = origHtml;
         updateExclusionBadge();
       }
+    }
+
+    function downloadRsmiFile(btnEl) {
+      if (!currentFinalDir) return;
+      if (btnEl) {
+        const orig = btnEl.innerHTML;
+        btnEl.innerHTML = `<span class="spinner spinner-dark"></span> Downloading...`;
+        setTimeout(() => { btnEl.innerHTML = orig; }, 1200);
+      }
+      window.location.href = "/api/download_rsmi?folder=" + encodeURIComponent(currentFinalDir) + "&fmt=xlsx";
     }
 
     async function restoreExcludedRis(btnEl) {
@@ -966,9 +1022,11 @@
           return;
         }
         finishProgressAnimation(true);
+        pendingExcludedFiles = [];
+        document.getElementById("unsavedRsmiNotice").style.display = "none";
         renderRsmiTable(data.rsmi);
         btnEl.style.display = "none";
-        showStatus(`&#9989; Restored <strong>${data.restored_files.length}</strong> RIS file(s) and updated <code>RSMI.xlsx</code>!`, "success");
+        showStatus(`&#9989; Restored <strong>${data.restored_files.length}</strong> RIS file(s) and overwritten <code>RSMI.xlsx</code> &amp; <code>RSMI.xls</code>!`, "success");
       } catch (err) {
         finishProgressAnimation(false);
         showStatus("&#10060; Restore failed: " + err.message, "error");

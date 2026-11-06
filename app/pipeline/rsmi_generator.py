@@ -207,11 +207,20 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
     ws_sum.column_dimensions["E"].width = 48
     ws_sum.freeze_panes = "A2"
 
-    out_wb.save(output_xlsx)
+    output_xls = os.path.join(final_dir, "RSMI.xls")
+    try:
+        out_wb.save(output_xlsx)
+        out_wb.save(output_xls)
+    except PermissionError:
+        out_wb.close()
+        raise PermissionError(
+            "Cannot overwrite RSMI.xlsx / RSMI.xls because the file is currently open in Excel or LibreOffice Calc. Please close RSMI first and click Save & Overwrite RSMI again."
+        )
     out_wb.close()
 
     return {
         "rsmi_path": output_xlsx,
+        "rsmi_xls_path": output_xls,
         "total_ris_files": len(summary_rows),
         "total_medicine_rows": len(rsmi_rows),
         "grand_total_qty": grand_qty,
