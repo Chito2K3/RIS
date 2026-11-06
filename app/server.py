@@ -143,35 +143,35 @@ class RISAppHandler(BaseHTTPRequestHandler):
                     self._send_json({"ok": False, "error": "Final RIS folder not found."}, status=400)
                     return
 
-                excl_dir = os.path.join(final_dir, "_EXCLUDED_RIS")
-                os.makedirs(excl_dir, exist_ok=True)
+                # IMPORTANT: Keep ALL generated RIS .xlsx files inside 02_RIS_FINAL/ (including RIS - OCTOBER_2026_POPULATED.xlsx)!
+                # Only exclude the selected files from being compiled into RSMI.xlsx / RSMI.xls.
+                excl_state_path = os.path.join(final_dir, "_rsmi_excluded.json")
+                existing_excl = set()
+                if os.path.exists(excl_state_path):
+                    try:
+                        with open(excl_state_path, "r", encoding="utf-8") as f:
+                            existing_excl = set(json.load(f))
+                    except Exception:
+                        pass
 
-                excluded_set = set(os.path.basename(f) for f in excluded_files)
-                # If the user excluded any PHARMACY_RIS_*.xlsx file, also automatically exclude
-                # the Master Pharmacy file (RIS - *_POPULATED.xlsx) if present, and vice versa!
-                if any("PHARMACY_RIS_" in f.upper() or "POPULATED" in f.upper() for f in excluded_set):
+                for f in excluded_files:
+                    existing_excl.add(os.path.basename(f))
+
+                # If user excluded PHARMACY_RIS_*.xlsx or RIS - *_POPULATED.xlsx, exclude both from RSMI
+                if any("PHARMACY_RIS_" in f.upper() or "POPULATED" in f.upper() for f in existing_excl):
                     for f in os.listdir(final_dir):
                         if ("PHARMACY_RIS_" in f.upper() or "POPULATED" in f.upper()) and f.lower().endswith(".xlsx"):
-                            excluded_set.add(f)
+                            existing_excl.add(f)
 
-                moved_files = []
-                for safe_fn in sorted(excluded_set):
-                    src_p = os.path.join(final_dir, safe_fn)
-                    dst_p = os.path.join(excl_dir, safe_fn)
-                    if os.path.exists(src_p) and os.path.isfile(src_p):
-                        shutil.move(src_p, dst_p)
-                        moved_files.append(safe_fn)
+                with open(excl_state_path, "w", encoding="utf-8") as f:
+                    json.dump(sorted(existing_excl), f)
 
-                rsmi_info = generate_rsmi_from_folder(final_dir, excluded_files=list(excluded_set))
-                excluded_on_disk = sorted([
-                    f for f in os.listdir(excl_dir)
-                    if f.lower().endswith(".xlsx") and not f.startswith("~$")
-                ])
+                rsmi_info = generate_rsmi_from_folder(final_dir, excluded_files=list(existing_excl))
                 saved_at = datetime.datetime.now().strftime("%I:%M:%S %p")
                 self._send_json({
                     "ok": True,
-                    "moved_files": moved_files,
-                    "excluded_count_total": len(excluded_on_disk),
+                    "moved_files": sorted(existing_excl),
+                    "excluded_count_total": len(existing_excl),
                     "saved_at": saved_at,
                     "rsmi": rsmi_info,
                 })
@@ -193,6 +193,14 @@ class RISAppHandler(BaseHTTPRequestHandler):
                         if os.path.isfile(src_p):
                             shutil.move(src_p, dst_p)
                             restored.append(fname)
+                excl_state_path = os.path.join(final_dir, "_rsmi_excluded.json")
+                if os.path.exists(excl_state_path):
+                    try:
+                        with open(excl_state_path, "r", encoding="utf-8") as f:
+                            restored.extend(json.load(f))
+                        os.remove(excl_state_path)
+                    except Exception:
+                        pass
                 rsmi_info = generate_rsmi_from_folder(final_dir)
                 self._send_json({
                     "ok": True,
