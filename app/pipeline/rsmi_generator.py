@@ -9,6 +9,16 @@ SKIP_FILES = {
     "RSMI.xls",
 }
 
+def is_rsmi_or_master_file(fname, master_filename=None):
+    u = fname.upper()
+    if fname in SKIP_FILES:
+        return True
+    if u.startswith("RSMI"):
+        return True
+    if (master_filename and fname == master_filename) or ("POPULATED" in u):
+        return True
+    return False
+
 def extract_ris_no(raw_val):
     if not raw_val:
         return ""
@@ -16,81 +26,47 @@ def extract_ris_no(raw_val):
     s = re.sub(r'^(?:RIS|RSI)\s*No\.?\s*:?\s*', '', s, flags=re.IGNORECASE).strip()
     return s
 
-def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=None):
-    """
-    Scans all generated RIS .xlsx files inside `final_dir` (excluding any in `excluded_files`),
-    builds `RSMI.xlsx` with Sheet 1 ('RSMI') containing:
-      Column A: RSI No:
-      Column B: Stock No.
-      Column C: Unit
-      Column D: Description
-      Column E: Quantity
-    and Sheet 2 ('RIS Count Summary') containing per-RIS item counts and total quantities.
-    """
-    output_xlsx = os.path.join(final_dir, "RSMI.xlsx")
-    excluded_set = set(excluded_files or [])
+def _read_ris_file_items(fpath):
+    wb = openpyxl.load_workbook(fpath, data_only=True)
+    ws = wb.active
 
-    all_files = sorted([
-        f for f in os.listdir(final_dir)
-        if os.path.isfile(os.path.join(final_dir, f))
-        and f.lower().endswith(".xlsx")
-        and not f.startswith("~$")
-        and f not in SKIP_FILES
-        and f not in excluded_set
-    ])
+    office = str(ws.cell(6, 2).value or "").strip()
+    raw_ris_no = ws.cell(6, 5).value
+    ris_no = extract_ris_no(raw_ris_no)
 
-    # Keep purely alphabetical order so all PHARMACY files are grouped together cleanly
-    ordered_files = list(all_files)
+    rows = []
+    item_count = 0
+    total_qty = 0
 
-    rsmi_rows = []
-    summary_rows = []
+    for r in range(9, ws.max_row + 1):
+        col_a = ws.cell(r, 1).value
+        col_a_str = str(col_a).strip() if col_a is not None else ""
+        if col_a_str.upper() == "TOTAL" or col_a_str.upper().startswith("PURPOSE:"):
+            break
+        col_b = ws.cell(r, 2).value
+        col_c = ws.cell(r, 3).value
+        col_d = ws.cell(r, 4).value
 
-    for fname in ordered_files:
-        fpath = os.path.join(final_dir, fname)
-        wb = openpyxl.load_workbook(fpath, data_only=True)
-        ws = wb.active
+        if not col_a_str and not col_c:
+            continue
 
-        office = str(ws.cell(6, 2).value or "").strip()
-        raw_ris_no = ws.cell(6, 5).value
-        ris_no = extract_ris_no(raw_ris_no)
+        unit_str = str(col_b).strip() if col_b is not None else ""
+        desc_str = str(col_c).strip() if col_c is not None else ""
+        qty_val = col_d if col_d is not None else 0
+        try:
+            qty_num = int(float(qty_val)) if float(qty_val).is_integer() else float(qty_val)
+        except Exception:
+            qty_num = qty_val
 
-        item_count = 0
-        total_qty = 0
+        rows.append((ris_no, col_a_str, unit_str, desc_str, qty_num))
+        item_count += 1
+        if isinstance(qty_num, (int, float)):
+            total_qty += qty_num
 
-        for r in range(9, ws.max_row + 1):
-            col_a = ws.cell(r, 1).value
-            col_a_str = str(col_a).strip() if col_a is not None else ""
-            if col_a_str.upper() == "TOTAL" or col_a_str.upper().startswith("PURPOSE:"):
-                break
-            col_b = ws.cell(r, 2).value
-            col_c = ws.cell(r, 3).value
-            col_d = ws.cell(r, 4).value
+    wb.close()
+    return office, ris_no, rows, item_count, total_qty
 
-            if not col_a_str and not col_c:
-                continue
-
-            unit_str = str(col_b).strip() if col_b is not None else ""
-            desc_str = str(col_c).strip() if col_c is not None else ""
-            qty_val = col_d if col_d is not None else 0
-            try:
-                qty_num = int(float(qty_val)) if float(qty_val).is_integer() else float(qty_val)
-            except Exception:
-                qty_num = qty_val
-
-            rsmi_rows.append((ris_no, col_a_str, unit_str, desc_str, qty_num))
-            item_count += 1
-            if isinstance(qty_num, (int, float)):
-                total_qty += qty_num
-
-        wb.close()
-        summary_rows.append({
-            "ris_no": ris_no,
-            "office": office,
-            "item_count": item_count,
-            "total_qty": total_qty,
-            "filename": fname,
-        })
-
+def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None):
     out_wb = openpyxl.Workbook()
     ws_rsmi = out_wb.active
     ws_rsmi.title = "RSMI"
@@ -181,7 +157,7 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
     tot_row = len(summary_rows) + 2
     ws_sum.cell(tot_row, 1, "TOTAL").font = bold_font
     ws_sum.cell(tot_row, 1).alignment = align_center
-    ws_sum.cell(tot_row, 2, f"{len(summary_rows)} RIS Files").font = bold_font
+    ws_sum.cell(tot_row, 2, f"{len(summary_rows)} RIS File(s)").font = bold_font
     ws_sum.cell(tot_row, 2).alignment = align_left
     ws_sum.cell(tot_row, 3, grand_items).font = bold_font
     ws_sum.cell(tot_row, 3).alignment = align_right
@@ -201,16 +177,105 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
     ws_sum.column_dimensions["E"].width = 48
     ws_sum.freeze_panes = "A2"
 
-    output_xls = os.path.join(final_dir, "RSMI.xls")
     try:
         out_wb.save(output_xlsx)
-        out_wb.save(output_xls)
+        if output_xls:
+            out_wb.save(output_xls)
     except PermissionError:
         out_wb.close()
         raise PermissionError(
-            "Cannot overwrite RSMI.xlsx / RSMI.xls because the file is currently open in Excel or LibreOffice Calc. Please close RSMI first and click Save & Overwrite RSMI again."
+            f"Cannot overwrite {os.path.basename(output_xlsx)} because it is currently open in Excel or LibreOffice Calc. Please close the file first and try again."
         )
     out_wb.close()
+    return grand_qty
+
+def generate_populated_rsmi(final_dir, master_filename=None, month_upper="OCTOBER", year_str="2026"):
+    """
+    Generates a separate RSMI workbook specifically for `RIS - <MONTH>_<YEAR>_POPULATED.xlsx`,
+    named `RSMI-<MONTH>_<YEAR>-Populated.xlsx` (and `.xls`) inside `final_dir`.
+    """
+    if not master_filename:
+        # Auto-detect RIS - *_POPULATED.xlsx in final_dir
+        for f in os.listdir(final_dir):
+            if "POPULATED" in f.upper() and f.lower().endswith(".xlsx") and not f.startswith("~$") and not f.upper().startswith("RSMI"):
+                master_filename = f
+                break
+
+    if not master_filename:
+        return None
+
+    master_path = os.path.join(final_dir, master_filename)
+    if not os.path.exists(master_path):
+        return None
+
+    # Extract month_year from master_filename if needed (e.g. RIS - OCTOBER_2026_POPULATED.xlsx)
+    m_match = re.search(r'RIS\s*-\s*([A-Z]+)_(\d{4})_POPULATED', master_filename, re.IGNORECASE)
+    if m_match:
+        month_upper = m_match.group(1).upper()
+        year_str = m_match.group(2)
+
+    pop_xlsx_name = f"RSMI-{month_upper}_{year_str}-Populated.xlsx"
+    pop_xls_name = f"RSMI-{month_upper}_{year_str}-Populated.xls"
+    pop_xlsx_path = os.path.join(final_dir, pop_xlsx_name)
+    pop_xls_path = os.path.join(final_dir, pop_xls_name)
+
+    office, ris_no, rows, item_count, total_qty = _read_ris_file_items(master_path)
+    summary_rows = [{
+        "ris_no": ris_no,
+        "office": office,
+        "item_count": item_count,
+        "total_qty": total_qty,
+        "filename": master_filename,
+    }]
+
+    _write_rsmi_workbook(rows, summary_rows, pop_xlsx_path, pop_xls_path)
+
+    return {
+        "filename": pop_xlsx_name,
+        "xls_filename": pop_xls_name,
+        "path": pop_xlsx_path,
+        "xls_path": pop_xls_path,
+        "source_ris_file": master_filename,
+        "ris_no": ris_no,
+        "office": office,
+        "item_count": item_count,
+        "total_qty": total_qty,
+    }
+
+def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=None):
+    """
+    Scans all generated Per-Ward RIS .xlsx files inside `final_dir` (excluding Master Populated RIS,
+    RSMI files, and any files in `excluded_files`), and builds `RSMI.xlsx` + `RSMI.xls`.
+    """
+    output_xlsx = os.path.join(final_dir, "RSMI.xlsx")
+    output_xls = os.path.join(final_dir, "RSMI.xls")
+    excluded_set = set(excluded_files or [])
+
+    all_files = sorted([
+        f for f in os.listdir(final_dir)
+        if os.path.isfile(os.path.join(final_dir, f))
+        and f.lower().endswith(".xlsx")
+        and not f.startswith("~$")
+        and not is_rsmi_or_master_file(f, master_filename)
+        and f not in excluded_set
+    ])
+
+    rsmi_rows = []
+    summary_rows = []
+
+    for fname in all_files:
+        fpath = os.path.join(final_dir, fname)
+        office, ris_no, rows, item_count, total_qty = _read_ris_file_items(fpath)
+        rsmi_rows.extend(rows)
+        summary_rows.append({
+            "ris_no": ris_no,
+            "office": office,
+            "item_count": item_count,
+            "total_qty": total_qty,
+            "filename": fname,
+        })
+
+    grand_qty = _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls)
 
     return {
         "rsmi_path": output_xlsx,
@@ -220,4 +285,3 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
         "grand_total_qty": grand_qty,
         "summary_rows": summary_rows,
     }
-

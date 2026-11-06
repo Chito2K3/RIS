@@ -66,7 +66,11 @@ class RISAppHandler(BaseHTTPRequestHandler):
             qs = parse_qs(parsed.query)
             folder = qs.get("folder", [""])[0]
             fmt = qs.get("fmt", ["xlsx"])[0]
-            fname = "RSMI.xls" if fmt == "xls" else "RSMI.xlsx"
+            custom_file = qs.get("file", [""])[0]
+            if custom_file:
+                fname = os.path.basename(custom_file)
+            else:
+                fname = "RSMI.xls" if fmt == "xls" else "RSMI.xlsx"
             fpath = os.path.join(folder, fname)
             if not folder or not os.path.exists(fpath):
                 self._send_json({"error": f"{fname} not found"}, status=404)

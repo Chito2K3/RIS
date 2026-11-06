@@ -10,7 +10,7 @@ from .ris_generator import (
     build_ris_workbook,
     generate_all_ward_ris_files,
 )
-from .rsmi_generator import generate_rsmi_from_folder
+from .rsmi_generator import generate_rsmi_from_folder, generate_populated_rsmi
 
 MONTH_MAP = {
     "JANUARY": "JAN", "FEBRUARY": "FEB", "MARCH": "MAR", "APRIL": "APR",
@@ -119,7 +119,17 @@ def run_full_pipeline(
             sig_date=sig_date,
         )
 
-    # Stage 4: Generate RSMI.xlsx inside 02_RIS_FINAL
+    # Stage 4A: Generate separate RSMI-<MONTH>_<YEAR>-Populated.xlsx / .xls for Master Populated RIS
+    populated_rsmi_info = None
+    if master_ris_path and os.path.exists(master_ris_path):
+        populated_rsmi_info = generate_populated_rsmi(
+            final_dir=final_dir,
+            master_filename=master_ris_filename,
+            month_upper=month_upper,
+            year_str=year_str,
+        )
+
+    # Stage 4B: Generate Ward Issuance RSMI.xlsx / RSMI.xls inside 02_RIS_FINAL
     rsmi_info = generate_rsmi_from_folder(final_dir, master_filename=master_ris_filename)
 
     return {
@@ -133,6 +143,7 @@ def run_full_pipeline(
             "patient_rows_cleaned": sum(r.get("patient_rows_count", 0) for r in cleaned_consump_results),
             "master_ris_filename": master_ris_filename if master_ris_path else None,
             "master_ris_path": master_ris_path,
+            "populated_rsmi": populated_rsmi_info,
             "item_count": len(consolidated_consump_items),
             "total_qty": total_consump_qty,
         },
