@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARMMC Pharmacy — RIS & RSMI Automation App</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-hover: #1d4ed8;
+      --accent: #059669;
+      --accent-hover: #047857;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 60px;
+    }
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      color: #fff;
+      padding: 24px 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    header .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    header p {
+      color: #93c5fd;
+      font-size: 0.92rem;
+      margin-top: 4px;
+    }
+    .badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+    .pipeline-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .step-pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .step-pill .step-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+    .step-pill .step-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-top: 2px;
+    }
+    .step-pill .step-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 22px;
+    }
+    @media (max-width: 900px) {
+      .pipeline-steps, .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      margin-bottom: 22px;
+    }
+    .card h2 {
+      font-size: 1.15rem;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .upload-zone {
+      border: 2px dashed #94a3b8;
+      border-radius: 10px;
+      padding: 18px;
+      background: #f8fafc;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover {
+      border-color: var(--primary);
+      background: #eff6ff;
+    }
+    .upload-zone label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+      color: #1e293b;
+    }
+    .upload-zone .hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .upload-zone input[type="file"] {
+      width: 100%;
+      font-size: 0.88rem;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.92rem;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-accent {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-outline {
+      background: white;
+      color: #1e293b;
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { background: #f1f5f9; }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #statusBanner {
+      display: none;
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin-bottom: 22px;
+      font-weight: 500;
+    }
+    .status-loading {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    #resultsSection { display: none; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .stat-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-box .num {
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .stat-box .lbl {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #334155;
+      position: sticky;
+      top: 0;
+    }
+    td.num-col, th.num-col { text-align: right; }
+    .table-scroll {
+      max-height: 420px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .folder-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .folder-path {
+      font-family: Consolas, monospace;
+      font-size: 0.86rem;
+      color: #0f172a;
+      background: #e2e8f0;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div>
+        <h1>ARMMC Pharmacy — RIS &amp; RSMI Automation App</h1>
+        <p>Amang Rodriguez Memorial Medical Center • Allied Division / Pharmacy</p>
+      </div>
+      <div class="badge">RCC: 13 001 14 00012 03 02 33</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 4-Step Pipeline Overview -->
+    <div class="pipeline-steps">
+      <div class="step-pill">
+        <div class="step-num">Step 1 • Clean &amp; Combine</div>
+        <div class="step-title">Unmerge &amp; Combine into 1 Clean File</div>
+        <div class="step-desc">Cleans the 2 Consumption files &rarr; <code>CONSUMPTION_COMBINED_CLEANED.xlsx</code> in <code>01_CLEANED_DATA/</code></div>
+      </div>
+      <div class="step-pill">
+        <div class="step-num">Step 2 • Master RIS</div>
+        <div class="step-title">RIS - POPULATED.xlsx</div>
+        <div class="step-desc">Processes Consumption + Masterlist Units into Master Pharmacy RIS</div>
+      </div>
+      <div class="step-pill">
+        <div class="step-num">Step 3 • Per-Ward RIS</div>
+        <div class="step-title">All Ward RIS Slips</div>
+        <div class="step-desc">Processes Issuance into individual Ward RIS files (e.g. PEDIA WARD)</div>
+      </div>
+      <div class="step-pill">
+        <div class="step-num">Step 4 • Finale</div>
+        <div class="step-title">Consolidated RSMI.xlsx</div>
+        <div class="step-desc">Compiles RSI No:, Stock No., Unit, Description, Quantity &amp; Item Counts</div>
+      </div>
+    </div>
+
+    <div id="statusBanner"></div>
+
+    <form id="pipelineForm">
+      <div class="grid-2">
+        <!-- Left Column: File Uploads -->
+        <div class="card">
+          <h2>1. Select Raw Downloaded HIS Files</h2>
+
+          <div class="upload-zone">
+            <label>A. Raw Consumption Report Files (2 Files &rarr; Combined into 1 Clean File &rarr; Master Populated RIS)</label>
+            <div class="hint">
+              Upload both files below so they are cleaned of merged/empty cells, combined into <code>CONSUMPTION_COMBINED_CLEANED.xlsx</code> in <code>01_CLEANED_DATA/</code>, and processed into <code>RIS - OCTOBER_2026_POPULATED.xlsx</code>:
+            </div>
+            <div style="margin-bottom:8px;">
+              <strong style="font-size:0.84rem; color:#1e40af;">File 1 — Ancillary / Regular Consumption (e.g. <code>CONSUMP_ANCILLIARY_OCT_2026.xls</code>):</strong>
+              <input type="file" name="consumption_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
+            </div>
+            <div>
+              <strong style="font-size:0.84rem; color:#1e40af;">File 2 — Consignment Consumption (e.g. <code>CONS_CONSUMP_OCT_2026_ORIGINAL_BACKUP.xls</code>):</strong>
+              <input type="file" name="consumption_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
+            </div>
+          </div>
+
+          <div class="upload-zone">
+            <label>B. Raw Issuance Report File(s) (Image 2 &rarr; Per-Ward RIS Slips e.g. PEDIA WARD)</label>
+            <div class="hint">
+              Upload <code>issuance_storage_oct_2026.xls/.csv</code> (and optional <code>issuance_disp_oct_2026.xls/.csv</code>):
+            </div>
+            <div style="margin-bottom:8px;">
+              <strong style="font-size:0.84rem; color:#1e40af;">Issuance File 1 — Storage Issuance (e.g. <code>issuance_storage_oct_2026.csv</code>):</strong>
+              <input type="file" name="issuance_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
+            </div>
+            <div>
+              <strong style="font-size:0.84rem; color:#1e40af;">Issuance File 2 (Optional) — Dispensing Issuance (e.g. <code>issuance_disp_oct_2026.csv</code>):</strong>
+              <input type="file" name="issuance_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
+            </div>
+          </div>
+
+          <div class="upload-zone">
+            <label>C. Masterlist Reference File (For Column B "Unit" Lookup)</label>
+            <div class="hint">
+              Pre-configured to use <code>INVENTORY UTILIZATION REPORT_MASTERLIST_2026_V30.xlsx</code> (Column H). Upload a newer version only if needed:
+            </div>
+            <input type="file" name="masterlist_file" id="masterlist_file" accept=".xlsx,.xls" />
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn-primary" id="btnRunUpload">
+              &#9654; Clean Files &amp; Generate All RIS + RSMI
+            </button>
+            <button type="button" class="btn-accent" id="btnRunWorkspaceOct">
+              &#9889; Quick-Run with Workspace October 2026 Files
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Settings & Signatories -->
+        <div class="card">
+          <h2>2. RIS Settings &amp; Signatories</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Reporting Month</label>
+              <select name="month_name" id="month_name" onchange="updateFolderDefault()">
+                <option value="JANUARY">JANUARY</option>
+                <option value="FEBRUARY">FEBRUARY</option>
+                <option value="MARCH">MARCH</option>
+                <option value="APRIL">APRIL</option>
+                <option value="MAY">MAY</option>
+                <option value="JUNE">JUNE</option>
+                <option value="JULY">JULY</option>
+                <option value="AUGUST">AUGUST</option>
+                <option value="SEPTEMBER">SEPTEMBER</option>
+                <option value="OCTOBER" selected>OCTOBER</option>
+                <option value="NOVEMBER">NOVEMBER</option>
+                <option value="DECEMBER">DECEMBER</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Reporting Year</label>
+              <input type="text" name="year" id="year" value="2026" oninput="updateFolderDefault()" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Segregated Output Folder Name</label>
+            <input type="text" name="output_folder_name" id="output_folder_name" value="OUTPUT_OCTOBER_2026" />
+          </div>
+
+          <div class="form-group">
+            <label>Requested By (Printed Name)</label>
+            <input type="text" name="req_by_name" value="SABA, LEONARDO CONCHITO SEBASTIAN" />
+          </div>
+
+          <div class="form-group">
+            <label>Requested By (Designation)</label>
+            <input type="text" name="req_by_desig" value="Administrative Assistant II" />
+          </div>
+
+          <div class="form-group">
+            <label>Approved By (Printed Name — ALL CAPS)</label>
+            <input type="text" name="app_by_name" value="SALVE CERTEZA" />
+          </div>
+
+          <div class="form-group">
+            <label>Approved By (Designation)</label>
+            <input type="text" name="app_by_desig" value="Pharmacist V" />
+          </div>
+
+          <div class="form-group">
+            <label>Signatory Date (Requested &amp; Approved)</label>
+            <input type="text" name="sig_date" value="11/09/2026" />
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Results Section -->
+    <div id="resultsSection">
+      <div class="card">
+        <h2>3. Segregated Output Folders &amp; Generated Deliverables</h2>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="num" id="statRisFiles">0</div>
+            <div class="lbl">Total RIS Files Generated</div>
+          </div>
+          <div class="stat-box">
+            <div class="num" id="statMasterQty">0</div>
+            <div class="lbl">Master RIS Consumption Units</div>
+          </div>
+          <div class="stat-box">
+            <div class="num" id="statWardQty">0</div>
+            <div class="lbl">Total Ward Issuance Units</div>
+          </div>
+          <div class="stat-box">
+            <div class="num" id="statRsmiRows">0</div>
+            <div class="lbl">Total Medicine Rows in RSMI.xlsx</div>
+          </div>
+        </div>
+
+        <div class="folder-box">
+          <div>
+            <strong>Segregated Cleaned Files Folder (01_CLEANED_DATA):</strong><br/>
+            <span class="folder-path" id="cleanedDirPath"></span>
+          </div>
+          <div class="btn-row" style="margin-top:0;">
+            <button type="button" class="btn-outline" onclick="openFolder('cleaned')">&#128194; Open Cleaned Folder</button>
+            <button type="button" class="btn-outline" onclick="downloadZip('cleaned')">&#11015; Download Cleaned ZIP</button>
+          </div>
+        </div>
+
+        <div class="folder-box">
+          <div>
+            <strong>Final RIS &amp; RSMI Folder (02_RIS_FINAL):</strong><br/>
+            <span class="folder-path" id="finalDirPath"></span>
+          </div>
+          <div class="btn-row" style="margin-top:0;">
+            <button type="button" class="btn-primary" onclick="openFolder('final')">&#128194; Open Final RIS &amp; RSMI Folder</button>
+            <button type="button" class="btn-accent" onclick="downloadZip('final')">&#11015; Download Final RIS + RSMI ZIP</button>
+          </div>
+        </div>
+
+        <h2 style="margin-top:24px;">RSMI Summary — Per-RIS Item Count &amp; Total Quantity</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>RSI No:</th>
+                <th>Office / Ward</th>
+                <th class="num-col">Item Count</th>
+                <th class="num-col">Total Quantity</th>
+                <th>Generated File</th>
+              </tr>
+            </thead>
+            <tbody id="rsmiTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentCleanedDir = "";
+    let currentFinalDir = "";
+
+    function updateFolderDefault() {
+      const m = document.getElementById("month_name").value;
+      const y = document.getElementById("year").value.trim();
+      document.getElementById("output_folder_name").value = `OUTPUT_${m}_${y}`;
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById("statusBanner");
+      el.style.display = "block";
+      el.className = "status-" + type;
+      el.innerHTML = msg;
+    }
+
+    async function runPipeline(useWorkspaceOct) {
+      const formEl = document.getElementById("pipelineForm");
+      const fd = new FormData(formEl);
+      fd.set("use_workspace_october", useWorkspaceOct ? "true" : "false");
+
+      const btn1 = document.getElementById("btnRunUpload");
+      const btn2 = document.getElementById("btnRunWorkspaceOct");
+      btn1.disabled = true;
+      btn2.disabled = true;
+
+      showStatus("&#9203; Cleaning merged/empty cells, populating Master RIS, generating all Ward RIS slips, and compiling RSMI.xlsx... Please wait.", "loading");
+
+      try {
+        const res = await fetch("/api/process", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!data.ok) {
+          showStatus("&#10060; Error: " + (data.error || "Unknown error"), "error");
+          return;
+        }
+        renderResults(data.result);
+        showStatus("&#9989; Success! All raw files have been cleaned into <code>01_CLEANED_DATA</code> and all finalized RIS slips + <code>RSMI.xlsx</code> have been saved into <code>02_RIS_FINAL</code>.", "success");
+      } catch (err) {
+        showStatus("&#10060; Request failed: " + err.message, "error");
+      } finally {
+        btn1.disabled = false;
+        btn2.disabled = false;
+      }
+    }
+
+    function renderResults(r) {
+      currentCleanedDir = r.cleaned_dir;
+      currentFinalDir = r.final_dir;
+
+      document.getElementById("cleanedDirPath").textContent = r.cleaned_dir;
+      document.getElementById("finalDirPath").textContent = r.final_dir;
+
+      document.getElementById("statRisFiles").textContent = r.rsmi.total_ris_files.toLocaleString();
+      document.getElementById("statMasterQty").textContent = (r.consumption.total_qty || 0).toLocaleString();
+      document.getElementById("statWardQty").textContent = (r.issuance.total_qty || 0).toLocaleString();
+      document.getElementById("statRsmiRows").textContent = r.rsmi.total_medicine_rows.toLocaleString();
+
+      const tbody = document.getElementById("rsmiTableBody");
+      tbody.innerHTML = "";
+      r.rsmi.summary_rows.forEach((row, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td><strong>${row.ris_no || "(Blank)"}</strong></td>
+          <td>${row.office}</td>
+          <td class="num-col">${row.item_count.toLocaleString()}</td>
+          <td class="num-col">${row.total_qty.toLocaleString()}</td>
+          <td><code>${row.filename}</code></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("resultsSection").style.display = "block";
+      document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth" });
+    }
+
+    async function openFolder(which) {
+      const target = which === "cleaned" ? currentCleanedDir : currentFinalDir;
+      if (!target) return;
+      await fetch("/api/open_folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder: target })
+      });
+    }
+
+    function downloadZip(which) {
+      const target = which === "cleaned" ? currentCleanedDir : currentFinalDir;
+      if (!target) return;
+      window.location.href = "/api/download_zip?folder=" + encodeURIComponent(target);
+    }
+
+    document.getElementById("pipelineForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      runPipeline(false);
+    });
+
+    document.getElementById("btnRunWorkspaceOct").addEventListener("click", function() {
+      runPipeline(true);
+    });
+  </script>
+</body>
+</html>
+
