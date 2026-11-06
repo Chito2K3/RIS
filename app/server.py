@@ -16,6 +16,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
 from pipeline.runner import run_full_pipeline
+from pipeline.rsmi_generator import generate_rsmi_from_folder
 
 DEFAULT_MASTERLIST = os.path.join(
     ROOT_DIR, "RIS_OCTOBER_FINAL", "INVENTORY UTILIZATION REPORT_MASTERLIST_2026_V30.xlsx"
@@ -96,13 +97,76 @@ class RISAppHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/open_folder":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
-            folder = body.get("folder", "")
+            folder = os.path.normpath(body.get("folder", ""))
             if folder and os.path.exists(folder):
                 if os.name == "nt":
-                    os.startfile(folder)
+                    subprocess.Popen(["explorer.exe", folder])
                 self._send_json({"ok": True, "opened": folder})
             else:
                 self._send_json({"ok": False, "error": f"Folder not found: {folder}"}, status=400)
+            return
+
+        if parsed.path == "/api/update_rsmi_exclusions":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
+                final_dir = os.path.normpath(body.get("final_dir", ""))
+                excluded_files = body.get("excluded_files", [])
+
+                if not final_dir or not os.path.exists(final_dir):
+                    self._send_json({"ok": False, "error": "Final RIS folder not found."}, status=400)
+                    return
+
+                excl_dir = os.path.join(final_dir, "_EXCLUDED_RIS")
+                os.makedirs(excl_dir, exist_ok=True)
+
+                moved_files = []
+                for fname in excluded_files:
+                    safe_fn = os.path.basename(fname)
+                    src_p = os.path.join(final_dir, safe_fn)
+                    dst_p = os.path.join(excl_dir, safe_fn)
+                    if os.path.exists(src_p) and os.path.isfile(src_p):
+                        shutil.move(src_p, dst_p)
+                        moved_files.append(safe_fn)
+
+                rsmi_info = generate_rsmi_from_folder(final_dir)
+                excluded_on_disk = sorted([
+                    f for f in os.listdir(excl_dir)
+                    if f.lower().endswith(".xlsx") and not f.startswith("~$")
+                ])
+                self._send_json({
+                    "ok": True,
+                    "moved_files": moved_files,
+                    "excluded_count_total": len(excluded_on_disk),
+                    "rsmi": rsmi_info,
+                })
+            except Exception as e:
+                self._send_json({"ok": False, "error": str(e)}, status=500)
+            return
+
+        if parsed.path == "/api/restore_exclusions":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
+                final_dir = os.path.normpath(body.get("final_dir", ""))
+                excl_dir = os.path.join(final_dir, "_EXCLUDED_RIS")
+                restored = []
+                if os.path.exists(excl_dir):
+                    for fname in os.listdir(excl_dir):
+                        src_p = os.path.join(excl_dir, fname)
+                        dst_p = os.path.join(final_dir, fname)
+                        if os.path.isfile(src_p):
+                            shutil.move(src_p, dst_p)
+                            restored.append(fname)
+                rsmi_info = generate_rsmi_from_folder(final_dir)
+                self._send_json({
+                    "ok": True,
+                    "restored_files": restored,
+                    "excluded_count_total": 0,
+                    "rsmi": rsmi_info,
+                })
+            except Exception as e:
+                self._send_json({"ok": False, "error": str(e)}, status=500)
             return
 
         if parsed.path == "/api/process":

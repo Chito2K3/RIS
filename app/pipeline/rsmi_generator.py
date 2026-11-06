@@ -16,10 +16,10 @@ def extract_ris_no(raw_val):
     s = re.sub(r'^(?:RIS|RSI)\s*No\.?\s*:?\s*', '', s, flags=re.IGNORECASE).strip()
     return s
 
-def generate_rsmi_from_folder(final_dir, master_filename=None):
+def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=None):
     """
-    Scans all generated RIS .xlsx files inside `final_dir`, builds `RSMI.xlsx`
-    with Sheet 1 ('RSMI') containing:
+    Scans all generated RIS .xlsx files inside `final_dir` (excluding any in `excluded_files`),
+    builds `RSMI.xlsx` with Sheet 1 ('RSMI') containing:
       Column A: RSI No:
       Column B: Stock No.
       Column C: Unit
@@ -28,10 +28,15 @@ def generate_rsmi_from_folder(final_dir, master_filename=None):
     and Sheet 2 ('RIS Count Summary') containing per-RIS item counts and total quantities.
     """
     output_xlsx = os.path.join(final_dir, "RSMI.xlsx")
+    excluded_set = set(excluded_files or [])
 
     all_files = sorted([
         f for f in os.listdir(final_dir)
-        if f.lower().endswith(".xlsx") and not f.startswith("~$") and f not in SKIP_FILES
+        if os.path.isfile(os.path.join(final_dir, f))
+        and f.lower().endswith(".xlsx")
+        and not f.startswith("~$")
+        and f not in SKIP_FILES
+        and f not in excluded_set
     ])
 
     ordered_files = []
