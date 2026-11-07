@@ -5,7 +5,7 @@ import shutil
 import zipfile
 import tempfile
 import subprocess
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import cgi
 
@@ -26,7 +26,12 @@ LAST_RUN_STATE = {}
 
 class RISAppHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        sys.stdout.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), format % args))
+        try:
+            if sys.stdout is not None:
+                sys.stdout.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), format % args))
+                sys.stdout.flush()
+        except Exception:
+            pass
 
     def _send_json(self, data, status=200):
         body = json.dumps(data).encode("utf-8")
@@ -235,6 +240,7 @@ class RISAppHandler(BaseHTTPRequestHandler):
                 app_by_name = form.getvalue("app_by_name", "SALVE CERTEZA")
                 app_by_desig = form.getvalue("app_by_desig", "Pharmacist V")
                 sig_date = form.getvalue("sig_date", "11/09/2026")
+                rsmi_custodian_name = form.getvalue("rsmi_custodian_name", app_by_name)
                 use_sample_oct = form.getvalue("use_workspace_october", "false") == "true"
 
                 output_base_dir = os.path.join(ROOT_DIR, output_folder_name)
@@ -311,6 +317,7 @@ class RISAppHandler(BaseHTTPRequestHandler):
                     app_by_name=app_by_name,
                     app_by_desig=app_by_desig,
                     sig_date=sig_date,
+                    rsmi_custodian_name=rsmi_custodian_name,
                 )
                 LAST_RUN_STATE = result
                 self._send_json({"ok": True, "result": result})
@@ -328,15 +335,29 @@ class RISAppHandler(BaseHTTPRequestHandler):
 
         self._send_json({"ok": False, "error": f"Unknown GET endpoint: {parsed.path}"}, status=404)
 
-def run_server(port=5050):
-    server = HTTPServer(("127.0.0.1", port), RISAppHandler)
-    print(f"============================================================")
-    print(f" ARMMC Pharmacy RIS & RSMI Automation App Running!")
-    print(f" Open in browser: http://127.0.0.1:{port}")
-    print(f"============================================================")
+def run_server(port=5050, open_browser=False):
+    class ReusableThreadingHTTPServer(ThreadingHTTPServer):
+        allow_reuse_address = True
+
+    server = ReusableThreadingHTTPServer(("127.0.0.1", port), RISAppHandler)
+    url = f"http://127.0.0.1:{port}"
+    try:
+        if sys.stdout is not None:
+            print(f"============================================================", flush=True)
+            print(f" ARMMC Pharmacy RIS & RSMI Automation App Running!", flush=True)
+            print(f" Open in browser: {url}", flush=True)
+            print(f"============================================================", flush=True)
+    except Exception:
+        pass
+    if open_browser:
+        import webbrowser
+        import threading
+        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     server.serve_forever()
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 5050
-    run_server(port)
+    open_browser = "--open" in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    port = int(args[0]) if len(args) > 0 else 5050
+    run_server(port, open_browser=open_browser)
 

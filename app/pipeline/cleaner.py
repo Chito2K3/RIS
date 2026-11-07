@@ -67,6 +67,18 @@ def save_styled_dataframe(df, xlsx_path, csv_path=None, sheet_name="Cleaned_Data
         ws.column_dimensions[col_letter].width = min(max_len + 4, 55)
 
     ws.freeze_panes = "A2"
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.print_options.horizontalCentered = True
+    ws.page_margins.left = 0.35
+    ws.page_margins.right = 0.35
+    ws.page_margins.top = 0.5
+    ws.page_margins.bottom = 0.5
+    ws.page_margins.header = 0.25
+    ws.page_margins.footer = 0.25
     wb.save(xlsx_path)
     wb.close()
 

@@ -1,5 +1,6 @@
 import os
 from .unit_lookup import UnitLookup
+from .rcc_lookup import RccLookup
 from .cleaner import (
     clean_consumption_file,
     consolidate_consumption_items,
@@ -30,6 +31,7 @@ def run_full_pipeline(
     app_by_name="SALVE CERTEZA",
     app_by_desig="Pharmacist V",
     sig_date="11/09/2026",
+    rsmi_custodian_name=None,
 ):
     """
     Executes the complete 4-stage pipeline:
@@ -58,8 +60,10 @@ def run_full_pipeline(
                         pass
         os.makedirs(d, exist_ok=True)
 
-    # Load Unit Lookup from Masterlist
+    # Load Unit Lookup from Masterlist & RCC Lookup from `rs code.xls`
     unit_lookup = UnitLookup(masterlist_path)
+    rcc_lookup = RccLookup()
+    effective_custodian = str(rsmi_custodian_name or app_by_name or "SALVE CERTEZA").strip()
 
     # Stage 1A: Clean Consumption files & Combine into 1 unified clean file
     cleaned_consump_results = []
@@ -85,6 +89,7 @@ def run_full_pipeline(
             unit_lookup=unit_lookup,
             is_master=True,
             month_year_label=month_year_label,
+            rcc_code=rcc_lookup.resolve_rcc("PHARMACY"),
             req_by_name=req_by_name,
             req_by_desig=req_by_desig,
             app_by_name=app_by_name,
@@ -109,6 +114,7 @@ def run_full_pipeline(
             active_wards=combined_issuance_info["active_wards"],
             final_dir=final_dir,
             unit_lookup=unit_lookup,
+            rcc_lookup=rcc_lookup,
             month_short=month_short,
             year=year_str,
             month_year_label=month_year_label,
@@ -127,10 +133,15 @@ def run_full_pipeline(
             master_filename=master_ris_filename,
             month_upper=month_upper,
             year_str=year_str,
+            custodian_name=effective_custodian,
         )
 
     # Stage 4B: Generate Ward Issuance RSMI.xlsx / RSMI.xls inside 02_RIS_FINAL
-    rsmi_info = generate_rsmi_from_folder(final_dir, master_filename=master_ris_filename)
+    rsmi_info = generate_rsmi_from_folder(
+        final_dir,
+        master_filename=master_ris_filename,
+        custodian_name=effective_custodian,
+    )
 
     return {
         "output_base_dir": output_base_dir,

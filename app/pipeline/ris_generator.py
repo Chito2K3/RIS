@@ -45,7 +45,7 @@ def build_ris_workbook(
     unit_lookup,
     is_master=False,
     month_year_label="October 2026",
-    rcc_code="13 001 14 00012 03 02 33",
+    rcc_code="13-001-14-00012-03-02-33",
     req_by_name="SABA, LEONARDO CONCHITO SEBASTIAN",
     req_by_desig="Administrative Assistant II",
     app_by_name="SALVE CERTEZA",
@@ -62,16 +62,16 @@ def build_ris_workbook(
     ws = wb.active
     ws.title = "RIS"
 
-    # 1. Exact column widths (8 columns: A through H)
+    # 1. Compact column widths (8 columns: A through H) so Fit-to-1-Page-Wide prints at ~78-82% scale in A4 Portrait
     col_widths = {
-        'A': 16.0,  # Stock No.
-        'B': 12.0,  # Unit
-        'C': 55.0,  # Description
-        'D': 18.0,  # Quantity (Requisition)
-        'E': 10.0,  # Yes (Stock Available)
-        'F': 13.0,  # No (Stock Available)
-        'G': 18.0,  # Quantity (Issue)
-        'H': 13.0   # Remarks (Issue)
+        'A': 13.5,  # Stock No.
+        'B': 9.5,   # Unit
+        'C': 38.0,  # Description (wraps long descriptions cleanly)
+        'D': 11.0,  # Quantity (Requisition)
+        'E': 6.5,   # Yes (Stock Available)
+        'F': 6.5,   # No (Stock Available)
+        'G': 11.0,  # Quantity (Issue)
+        'H': 10.0   # Remarks (Issue)
     }
     for col_let, w in col_widths.items():
         ws.column_dimensions[col_let].width = w
@@ -199,12 +199,15 @@ def build_ris_workbook(
             cell = ws.cell(r, c)
             cell.font = Font(name='Calibri', size=11.0, bold=False)
             if c in (1, 2):
-                cell.alignment = Alignment(horizontal='center', vertical='top', wrap_text=True)
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             elif c == 3:
-                cell.alignment = Alignment(horizontal='left', vertical='top')
+                cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+            elif c in (4, 7):
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             else:
-                cell.alignment = Alignment(vertical='top', wrap_text=True)
+                cell.alignment = Alignment(vertical='center', wrap_text=True)
             cell.border = border_all_thick
+        ws.row_dimensions[r].height = 26.0 if len(desc) > 40 else 21.95
 
     # 4. TOTAL Row
     total_row = 9 + len(items)
@@ -363,7 +366,26 @@ def build_ris_workbook(
     ws.cell(r_date, 8).value = None
     ws.cell(r_date, 8).border = border_all_thick
 
-    wb.save(dest_path)
+    # Configure Page Setup so all 8 columns (A:H) fit cleanly on 1 page wide when printed
+    ws.print_area = f"A1:H{r_date}"
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.print_options.horizontalCentered = True
+    ws.page_margins.left = 0.2
+    ws.page_margins.right = 0.2
+    ws.page_margins.top = 0.35
+    ws.page_margins.bottom = 0.35
+    ws.page_margins.header = 0.2
+    ws.page_margins.footer = 0.2
+
+    try:
+        wb.save(dest_path)
+    except PermissionError:
+        # If the file is currently open in Excel, skip overwriting so the rest of the pipeline succeeds
+        pass
     wb.close()
     return dest_path
 
@@ -372,6 +394,7 @@ def generate_all_ward_ris_files(
     active_wards,
     final_dir,
     unit_lookup,
+    rcc_lookup=None,
     month_short="OCT",
     year="2026",
     month_year_label="October 2026",
@@ -399,6 +422,7 @@ def generate_all_ward_ris_files(
             ward_total_qty += q_num
 
         ris_no_text = compute_ward_ris_code(ward, month_short=month_short, year=year)
+        ward_rcc = rcc_lookup.resolve_rcc(ward) if rcc_lookup else "13-001-14-00012-03-02-33"
         fname = sanitize_ward_filename(ward, month_short=month_short)
         dest_path = os.path.join(final_dir, fname)
 
@@ -410,6 +434,7 @@ def generate_all_ward_ris_files(
             unit_lookup=unit_lookup,
             is_master=False,
             month_year_label=month_year_label,
+            rcc_code=ward_rcc,
             req_by_name=req_by_name,
             req_by_desig=req_by_desig,
             app_by_name=app_by_name,
@@ -419,6 +444,7 @@ def generate_all_ward_ris_files(
         generated_wards.append({
             "ward": ward,
             "ris_no": ris_no_text.replace("RIS No.  ", "").strip(),
+            "rcc_code": ward_rcc,
             "filename": fname,
             "path": dest_path,
             "item_count": len(ward_items),
