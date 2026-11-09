@@ -1,4 +1,9 @@
 import os
+import importlib
+from . import ris_generator as _ris_gen_mod
+from . import rsmi_generator as _rsmi_gen_mod
+importlib.reload(_ris_gen_mod)
+importlib.reload(_rsmi_gen_mod)
 from .unit_lookup import UnitLookup
 from .rcc_lookup import RccLookup
 from .cleaner import (
@@ -48,17 +53,17 @@ def run_full_pipeline(
 
     cleaned_dir = os.path.join(output_base_dir, "01_CLEANED_DATA")
     final_dir = os.path.join(output_base_dir, "02_RIS_FINAL")
-    # Clean previous generated files in 01_CLEANED_DATA and 02_RIS_FINAL so each run is fresh
-    for d in (cleaned_dir, final_dir):
-        if os.path.exists(d):
-            for old_f in os.listdir(d):
-                old_p = os.path.join(d, old_f)
-                if os.path.isfile(old_p):
-                    try:
-                        os.remove(old_p)
-                    except Exception:
-                        pass
-        os.makedirs(d, exist_ok=True)
+    os.makedirs(cleaned_dir, exist_ok=True)
+    os.makedirs(final_dir, exist_ok=True)
+
+    # Clean previous generated files in 01_CLEANED_DATA before Stage 1
+    for old_f in os.listdir(cleaned_dir):
+        old_p = os.path.join(cleaned_dir, old_f)
+        if os.path.isfile(old_p):
+            try:
+                os.remove(old_p)
+            except Exception:
+                pass
 
     # Load Unit Lookup from Masterlist & RCC Lookup from `rs code.xls`
     unit_lookup = UnitLookup(masterlist_path)
@@ -75,6 +80,22 @@ def run_full_pipeline(
     consolidated_consump_items = consolidate_consumption_items(cleaned_consump_results, cleaned_dir=cleaned_dir)
     combined_consump_xlsx = os.path.join(cleaned_dir, "CONSUMPTION_COMBINED_CLEANED.xlsx") if consolidated_consump_items else None
     total_consump_qty = sum(int(float(x["Quantity"])) for x in consolidated_consump_items)
+
+    # Stage 1B: Clean Issuance files before touching 02_RIS_FINAL
+    cleaned_issuance_results = []
+    for i_file in issuance_files:
+        if i_file and os.path.exists(i_file):
+            res = clean_issuance_file(i_file, cleaned_dir)
+            cleaned_issuance_results.append(res)
+
+    # Now clear old .xlsx/.xls files in 02_RIS_FINAL right before writing new ones
+    for old_f in os.listdir(final_dir):
+        old_p = os.path.join(final_dir, old_f)
+        if os.path.isfile(old_p):
+            try:
+                os.remove(old_p)
+            except Exception:
+                pass
 
     # Stage 2: Generate Master Populated RIS if consumption files were provided
     master_ris_filename = f"RIS - {month_upper}_{year_str}_POPULATED.xlsx"
@@ -96,13 +117,6 @@ def run_full_pipeline(
             app_by_desig=app_by_desig,
             sig_date=sig_date,
         )
-
-    # Stage 1B: Clean Issuance files
-    cleaned_issuance_results = []
-    for i_file in issuance_files:
-        if i_file and os.path.exists(i_file):
-            res = clean_issuance_file(i_file, cleaned_dir)
-            cleaned_issuance_results.append(res)
 
     # Stage 3: Combine Issuances & Generate Per-Ward RIS files
     generated_wards = []
@@ -142,6 +156,33 @@ def run_full_pipeline(
         master_filename=master_ris_filename,
         custodian_name=effective_custodian,
     )
+
+    # Mirror output folder across C: and E: workspaces if both exist so Explorer never shows an empty folder
+    try:
+        import shutil
+        folder_name = os.path.basename(os.path.normpath(output_base_dir))
+        mirror_roots = [
+            r"C:\Users\PC 127\Desktop\RIS NEW WITH APP\RIS",
+            r"E:\RIS NEW WITH APP\RIS",
+        ]
+        norm_out = os.path.normcase(os.path.abspath(output_base_dir))
+        for m_root in mirror_roots:
+            if os.path.exists(m_root):
+                m_out = os.path.join(m_root, folder_name)
+                if os.path.normcase(os.path.abspath(m_out)) != norm_out:
+                    for sub_name, src_sub in [("01_CLEANED_DATA", cleaned_dir), ("02_RIS_FINAL", final_dir)]:
+                        dst_sub = os.path.join(m_out, sub_name)
+                        os.makedirs(dst_sub, exist_ok=True)
+                        for fn in os.listdir(src_sub):
+                            s_f = os.path.join(src_sub, fn)
+                            d_f = os.path.join(dst_sub, fn)
+                            if os.path.isfile(s_f):
+                                try:
+                                    shutil.copy2(s_f, d_f)
+                                except Exception:
+                                    pass
+    except Exception:
+        pass
 
     return {
         "output_base_dir": output_base_dir,

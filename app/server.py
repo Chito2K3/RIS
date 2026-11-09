@@ -175,7 +175,15 @@ class RISAppHandler(BaseHTTPRequestHandler):
                 with open(excl_state_path, "w", encoding="utf-8") as f:
                     json.dump(sorted(existing_excl), f)
 
-                rsmi_info = generate_rsmi_from_folder(final_dir, excluded_files=list(existing_excl))
+                import importlib
+                import pipeline.ris_generator
+                import pipeline.rsmi_generator
+                import pipeline.runner
+                importlib.reload(pipeline.ris_generator)
+                importlib.reload(pipeline.rsmi_generator)
+                importlib.reload(pipeline.runner)
+
+                rsmi_info = pipeline.rsmi_generator.generate_rsmi_from_folder(final_dir, excluded_files=list(existing_excl))
                 saved_at = datetime.datetime.now().strftime("%I:%M:%S %p")
                 self._send_json({
                     "ok": True,
@@ -210,7 +218,15 @@ class RISAppHandler(BaseHTTPRequestHandler):
                         os.remove(excl_state_path)
                     except Exception:
                         pass
-                rsmi_info = generate_rsmi_from_folder(final_dir)
+                import importlib
+                import pipeline.ris_generator
+                import pipeline.rsmi_generator
+                import pipeline.runner
+                importlib.reload(pipeline.ris_generator)
+                importlib.reload(pipeline.rsmi_generator)
+                importlib.reload(pipeline.runner)
+
+                rsmi_info = pipeline.rsmi_generator.generate_rsmi_from_folder(final_dir)
                 self._send_json({
                     "ok": True,
                     "restored_files": restored,
@@ -305,7 +321,15 @@ class RISAppHandler(BaseHTTPRequestHandler):
                     }, status=400)
                     return
 
-                result = run_full_pipeline(
+                import importlib
+                import pipeline.ris_generator
+                import pipeline.rsmi_generator
+                import pipeline.runner
+                importlib.reload(pipeline.ris_generator)
+                importlib.reload(pipeline.rsmi_generator)
+                importlib.reload(pipeline.runner)
+
+                result = pipeline.runner.run_full_pipeline(
                     consumption_files=consump_paths,
                     issuance_files=issuance_paths,
                     masterlist_path=masterlist_path,
