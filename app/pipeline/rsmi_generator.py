@@ -6,7 +6,7 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.worksheet.pagebreak import Break
 from .rcc_lookup import RccLookup
 
-RSMI_ITEMS_PER_PAGE = 10
+RSMI_ITEMS_PER_PAGE = 12
 
 def _build_chunked_sum_formula(col_letter, row_ranges, chunk_size=20):
     """
@@ -82,6 +82,7 @@ def _read_ris_file_items(fpath, rcc_lookup=None):
         "STOCK NO",
         "TOTAL",
         "SIGNATURE",
+        "SIGNATURE:",
         "PRINTED NAME:",
         "NAME:",
         "DESIGNATION:",
@@ -182,19 +183,19 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
     ws = out_wb.active
     ws.title = "RSMI"
 
-    # Generous column widths so RIS No., Responsibility Center Code, Stock No., and Accounting headers never clip or break mid-code
+    # Balanced column widths so RIS No., Responsibility Center Code, Stock No., and Accounting headers fit on 1 line while maximizing A4 print zoom
     col_widths = {
         "A": 1.5,
-        "B": 18.0,   # RIS No. (fits OCT-2026-PHARM and ward RIS codes cleanly)
-        "C": 13.0,   # Responsibility Center Code (left half) / Recap Stock No. (left half)
-        "D": 13.0,   # Responsibility Center Code (right half) / Recap Stock No. (right half) -> C+D = 26 chars (fits 24-char RCC on 1 line)
-        "E": 15.0,   # Stock No. / Recap Quantity (fits DMCSP000018 & PRODMR000002 on 1 line)
-        "F": 22.0,   # Item (left half)
-        "G": 24.0,   # Item (right half) -> F+G = 46 chars wide, wraps long medicine descriptions cleanly
-        "H": 10.5,   # Unit
-        "I": 11.0,   # Quantity Issued / Recap Unit Cost
-        "J": 12.0,   # Unit Cost / Recap Total Cost
-        "K": 13.5,   # Amount / Recap UACS Object Code -> J+K = 25.5 chars (fits Accounting subheader & UACS Object Code)
+        "B": 16.5,   # RIS No. (fits OCT-2026-PHARM and ward RIS codes cleanly)
+        "C": 11.5,   # Responsibility Center Code (left half) / Recap Stock No. (left half)
+        "D": 11.5,   # Responsibility Center Code (right half) / Recap Stock No. (right half) -> C+D = 23 chars (fits 24-char RCC on 1 line)
+        "E": 13.5,   # Stock No. / Recap Quantity (fits DMCSP000018 & PRODMR000002 on 1 line)
+        "F": 20.0,   # Item (left half)
+        "G": 21.0,   # Item (right half) -> F+G = 41 chars wide, wraps long medicine descriptions cleanly
+        "H": 9.5,    # Unit
+        "I": 10.0,   # Quantity Issued / Recap Unit Cost
+        "J": 11.0,   # Unit Cost / Recap Total Cost
+        "K": 12.5,   # Amount / Recap UACS Object Code -> J+K = 23.5 chars (fits Accounting subheader & UACS Object Code)
     }
     for col_let, w in col_widths.items():
         ws.column_dimensions[col_let].width = w
@@ -233,8 +234,8 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         for c in range(7, 10):
             ws.cell(r_kind, c).border = Border(bottom=thin)
 
-        ws.row_dimensions[r_sp1].height = 10.0
-        ws.row_dimensions[r_sp2].height = 10.0
+        ws.row_dimensions[r_sp1].height = 6.0
+        ws.row_dimensions[r_sp2].height = 6.0
         ws.merge_cells(start_row=r_sp1, start_column=2, end_row=r_sp1, end_column=11)
         ws.merge_cells(start_row=r_sp2, start_column=2, end_row=r_sp2, end_column=11)
 
@@ -274,7 +275,7 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         ws.cell(r_fc, 11).border = Border(top=thin, bottom=thin)
 
         # Spacer
-        ws.row_dimensions[r_sp3].height = 10.0
+        ws.row_dimensions[r_sp3].height = 6.0
         ws.merge_cells(start_row=r_sp3, start_column=2, end_row=r_sp3, end_column=11)
         ws.cell(r_sp3, 2, " ")
         return r_sp3 + 1
@@ -417,10 +418,10 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         r_f1 = base_r + 6  # "Original - Accounting Division..."
         r_f2 = base_r + 7  # "Copy 2 - Supply and Property Custodian's file"
 
-        ws.row_dimensions[r_s1].height = 14.5
-        ws.row_dimensions[r_s2].height = 14.5
-        ws.row_dimensions[r_s3].height = 14.0
-        ws.row_dimensions[r_s4].height = 16.0
+        ws.row_dimensions[r_s1].height = 15.0
+        ws.row_dimensions[r_s2].height = 15.0
+        ws.row_dimensions[r_s3].height = 22.0
+        ws.row_dimensions[r_s4].height = 17.0
         ws.row_dimensions[r_s5].height = 14.5
         ws.row_dimensions[r_s6].height = 14.5
         ws.row_dimensions[r_f1].height = 14.5
@@ -523,7 +524,7 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         cur_r = _write_rsmi_top_banner(cur_r)
         data_start_r = _write_main_table_headers(cur_r)
 
-        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 10 slots per page)
+        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 12 slots per page)
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
             if slot_idx < len(page_rows):
@@ -532,13 +533,13 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
                 ris_no, rcc_code, stock_no, desc, unit, qty = ("", "", "", "", "", None)
 
             desc_str = str(desc or "")
-            est_lines = max(1, math.ceil(len(desc_str) / 42.0)) if desc_str else 1
+            est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
             if est_lines == 1:
-                ws.row_dimensions[r].height = 22.0
+                ws.row_dimensions[r].height = 20.0
             elif est_lines == 2:
-                ws.row_dimensions[r].height = 29.0
+                ws.row_dimensions[r].height = 26.0
             else:
-                ws.row_dimensions[r].height = 38.0
+                ws.row_dimensions[r].height = 33.0
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -636,13 +637,13 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
                 stock_no, r_qty, desc, unit = ("", None, "", "")
 
             desc_str = str(desc or "")
-            est_lines = max(1, math.ceil(len(desc_str) / 42.0)) if desc_str else 1
+            est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
             if est_lines == 1:
-                ws.row_dimensions[r].height = 22.0
+                ws.row_dimensions[r].height = 20.0
             elif est_lines == 2:
-                ws.row_dimensions[r].height = 29.0
+                ws.row_dimensions[r].height = 26.0
             else:
-                ws.row_dimensions[r].height = 38.0
+                ws.row_dimensions[r].height = 33.0
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -744,10 +745,10 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
     ws.print_options.horizontalCentered = True
     ws.page_margins.left = 0.2
     ws.page_margins.right = 0.2
-    ws.page_margins.top = 0.35
-    ws.page_margins.bottom = 0.35
-    ws.page_margins.header = 0.2
-    ws.page_margins.footer = 0.2
+    ws.page_margins.top = 0.25
+    ws.page_margins.bottom = 0.25
+    ws.page_margins.header = 0.15
+    ws.page_margins.footer = 0.15
 
     # --- SHEET 2: RIS COUNT SUMMARY ---
     header_font = Font(name="Calibri", size=11, bold=True, color="000000")
