@@ -642,22 +642,38 @@
         </div>
 
         <!-- Dedicated Master Populated RSMI Box -->
-        <div class="folder-box" id="populatedRsmiBox" style="background:#eff6ff; border-color:#93c5fd; display:none;">
-          <div>
-            <strong style="color:#1e3a8a;">Master Populated RSMI (for <span id="popSourceRisName">RIS - OCTOBER_2026_POPULATED.xlsx</span>):</strong><br/>
-            <span class="folder-path" id="popRsmiFilename" style="background:#dbeafe; color:#1e40af; font-weight:700;">RSMI-OCTOBER_2026-Populated.xlsx</span>
-            <span style="font-size:0.84rem; color:#334155; margin-left:8px;">
-              • RSI No: <strong id="popRsmiCode">OCT-2026-PHARM</strong>
-              • Items: <strong id="popRsmiItems">637</strong>
-              • Total Qty: <strong id="popRsmiQty">378,600</strong>
-            </span>
+        <!-- Dedicated Master Populated RSMI Box -->
+        <div class="folder-box" id="populatedRsmiBox" style="background:#eff6ff; border-color:#93c5fd; display:none; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; width:100%;">
+            <div>
+              <strong style="color:#1e3a8a;">Master Populated RSMI (for <span id="popSourceRisName">RIS - OCTOBER_2026_POPULATED.xlsx</span>):</strong><br/>
+              <span class="folder-path" id="popRsmiFilename" style="background:#dbeafe; color:#1e40af; font-weight:700;">RSMI-OCTOBER_2026-Populated.xlsx</span>
+              <span style="font-size:0.84rem; color:#334155; margin-left:8px;">
+                • RSI No: <strong id="popRsmiCode">OCT-2026-PHARM</strong>
+                • Items: <strong id="popRsmiItems">637</strong>
+                • Total Qty: <strong id="popRsmiQty">378,600</strong>
+              </span>
+            </div>
+            <div class="btn-row" style="margin-top:0;">
+              <button type="button" class="btn-primary" onclick="downloadPopulatedRsmi('xlsx', this)" style="padding:9px 14px; font-size:0.86rem;">
+                &#11015; Download All <span id="btnPopXlsxLbl">RSMI-Populated.xlsx</span>
+              </button>
+              <button type="button" class="btn-outline" onclick="downloadPopulatedRsmi('xls', this)" style="padding:9px 14px; font-size:0.86rem;">
+                &#11015; Download .xls
+              </button>
+            </div>
           </div>
-          <div class="btn-row" style="margin-top:0;">
-            <button type="button" class="btn-primary" onclick="downloadPopulatedRsmi('xlsx', this)" style="padding:9px 14px; font-size:0.86rem;">
-              &#11015; Download <span id="btnPopXlsxLbl">RSMI-OCTOBER_2026-Populated.xlsx</span>
+          <!-- Fund Cluster Pills for Populated RSMI -->
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed #bfdbfe; font-size:0.84rem;">
+            <span style="font-weight:700; color:#1e3a8a;">Segregated by Fund:</span>
+            <button type="button" class="btn-outline" style="padding:4px 10px; font-size:0.80rem; background:#fff;" onclick="downloadCustomRsmi(currentPopRafFile, this)">
+              &#11015; <strong>RAF</strong> (DMR/PROD): <span id="popRafStats">408 items</span>
             </button>
-            <button type="button" class="btn-outline" onclick="downloadPopulatedRsmi('xls', this)" style="padding:9px 14px; font-size:0.86rem;">
-              &#11015; Download .xls
+            <button type="button" class="btn-outline" style="padding:4px 10px; font-size:0.80rem; background:#fff;" onclick="downloadCustomRsmi(currentPopIgfFile, this)">
+              &#11015; <strong>IGF</strong> (DMEP/DMC): <span id="popIgfStats">205 items</span>
+            </button>
+            <button type="button" class="btn-outline" style="padding:4px 10px; font-size:0.80rem; background:#fff;" onclick="downloadCustomRsmi(currentPopDonFile, this)">
+              &#11015; <strong>DON</strong> (DMD/DMDON): <span id="popDonStats">28 items</span>
             </button>
           </div>
         </div>
@@ -683,6 +699,20 @@
               &#11015; Download RSMI.xlsx
             </button>
           </div>
+        </div>
+
+        <!-- Segregated Fund Cluster Quick-Download Bar for Ward RSMI -->
+        <div id="wardFundClusterBar" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:0.84rem;">
+          <span style="font-weight:700; color:#334155;">&#128193; Download Ward RSMI by Fund Cluster:</span>
+          <button type="button" class="btn-outline" style="padding:5px 11px; font-size:0.81rem; background:#fff;" onclick="downloadCustomRsmi('RSMI - RAF.xlsx', this)">
+            &#11015; <strong>RSMI - RAF</strong> (DMR/PROD): <span id="wardRafStats">854 items</span>
+          </button>
+          <button type="button" class="btn-outline" style="padding:5px 11px; font-size:0.81rem; background:#fff;" onclick="downloadCustomRsmi('RSMI - IGF.xlsx', this)">
+            &#11015; <strong>RSMI - IGF</strong> (DMEP/DMC): <span id="wardIgfStats">181 items</span>
+          </button>
+          <button type="button" class="btn-outline" style="padding:5px 11px; font-size:0.81rem; background:#fff;" onclick="downloadCustomRsmi('RSMI - DON.xlsx', this)">
+            &#11015; <strong>RSMI - DON</strong> (DMD/DMDON): <span id="wardDonStats">53 items</span>
+          </button>
         </div>
         <div id="unsavedRsmiNotice" style="display:none; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:0.88rem; font-weight:600;">
           &#9888; You have excluded RIS items from the list above. Click <strong>"&#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)"</strong> to overwrite the RSMI file in <code>02_RIS_FINAL/</code>!
@@ -719,6 +749,9 @@
     let currentFinalDir = "";
     let currentPopRsmiXlsx = "";
     let currentPopRsmiXls = "";
+    let currentPopRafFile = "";
+    let currentPopIgfFile = "";
+    let currentPopDonFile = "";
     let progressTimer = null;
     let pendingExcludedFiles = [];
     let currentSummaryRows = [];
@@ -859,6 +892,16 @@
           const pop = r.consumption.populated_rsmi;
           currentPopRsmiXlsx = pop.filename;
           currentPopRsmiXls = pop.xls_filename;
+          if (pop.fund_files) {
+            currentPopRafFile = pop.fund_files.RAF ? pop.fund_files.RAF.xlsx : "";
+            currentPopIgfFile = pop.fund_files.IGF ? pop.fund_files.IGF.xlsx : "";
+            currentPopDonFile = pop.fund_files.DON ? pop.fund_files.DON.xlsx : "";
+          }
+          if (pop.breakdown) {
+            if (pop.breakdown.RAF) document.getElementById("popRafStats").textContent = `${pop.breakdown.RAF.items.toLocaleString()} items (${pop.breakdown.RAF.qty.toLocaleString()} qty)`;
+            if (pop.breakdown.IGF) document.getElementById("popIgfStats").textContent = `${pop.breakdown.IGF.items.toLocaleString()} items (${pop.breakdown.IGF.qty.toLocaleString()} qty)`;
+            if (pop.breakdown.DON) document.getElementById("popDonStats").textContent = `${pop.breakdown.DON.items.toLocaleString()} items (${pop.breakdown.DON.qty.toLocaleString()} qty)`;
+          }
           document.getElementById("popSourceRisName").textContent = pop.source_ris_file;
           document.getElementById("popRsmiFilename").textContent = `${pop.filename} / ${pop.xls_filename}`;
           document.getElementById("popRsmiCode").textContent = pop.ris_no;
@@ -886,6 +929,12 @@
       currentSummaryRows = rsmi.summary_rows || [];
       document.getElementById("statRisFiles").textContent = rsmi.total_ris_files.toLocaleString();
       document.getElementById("statRsmiRows").textContent = rsmi.total_medicine_rows.toLocaleString();
+
+      if (rsmi.breakdown) {
+        if (rsmi.breakdown.RAF) document.getElementById("wardRafStats").textContent = `${rsmi.breakdown.RAF.items.toLocaleString()} items (${rsmi.breakdown.RAF.qty.toLocaleString()} qty)`;
+        if (rsmi.breakdown.IGF) document.getElementById("wardIgfStats").textContent = `${rsmi.breakdown.IGF.items.toLocaleString()} items (${rsmi.breakdown.IGF.qty.toLocaleString()} qty)`;
+        if (rsmi.breakdown.DON) document.getElementById("wardDonStats").textContent = `${rsmi.breakdown.DON.items.toLocaleString()} items (${rsmi.breakdown.DON.qty.toLocaleString()} qty)`;
+      }
 
       const chkHeader = document.getElementById("chkAllHeader");
       if (chkHeader) chkHeader.checked = false;
@@ -1060,6 +1109,16 @@
         setTimeout(() => { btnEl.innerHTML = orig; }, 1200);
       }
       window.location.href = "/api/download_rsmi?folder=" + encodeURIComponent(currentFinalDir) + "&file=" + encodeURIComponent(targetFn);
+    }
+
+    function downloadCustomRsmi(filename, btnEl) {
+      if (!currentFinalDir || !filename) return;
+      if (btnEl) {
+        const orig = btnEl.innerHTML;
+        btnEl.innerHTML = `<span class="spinner spinner-dark"></span>`;
+        setTimeout(() => { btnEl.innerHTML = orig; }, 1200);
+      }
+      window.location.href = "/api/download_rsmi?folder=" + encodeURIComponent(currentFinalDir) + "&file=" + encodeURIComponent(filename);
     }
 
     async function restoreExcludedRis(btnEl) {

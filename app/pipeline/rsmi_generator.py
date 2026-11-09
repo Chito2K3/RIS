@@ -35,13 +35,57 @@ DEFAULT_RCC = "13-001-14-00012-03-02-33"
 DEFAULT_CUSTODIAN = "SALVE CERTEZA"
 _RCC_LOOKUP = RccLookup()
 
+FUND_CLUSTERS = [
+    {
+        "code": "RAF",
+        "sheet_title": "RSMI - RAF",
+        "label": "Regular Agency Fund",
+        "full_label": "Regular Agency Fund (RAF)",
+        "file_suffix": "RAF",
+    },
+    {
+        "code": "IGF",
+        "sheet_title": "RSMI - IGF",
+        "label": "Internally Generated Fund",
+        "full_label": "Internally Generated Fund (IGF)",
+        "file_suffix": "IGF",
+    },
+    {
+        "code": "DON",
+        "sheet_title": "RSMI - DON",
+        "label": "Donations",
+        "full_label": "Donation Fund (DON)",
+        "file_suffix": "DON",
+    },
+]
+
+def classify_fund_cluster(stock_no):
+    """
+    Classifies a medicine/supply item into its designated Philippine Government Fund Cluster
+    based on its official ARMMC Stock Number prefix:
+      - `RAF` (Regular Agency Fund / GAA / Fund 101): Begins with `DMR` or `PROD` (e.g. `PRODMR...`)
+      - `IGF` (Internally Generated Fund / Income / Consignment / Fund 161): Begins with `DMEP`, `DMCSP`, `DMC`
+      - `DON` (Donations / Trust / Grants / Fund 184): Begins with `DMDON`, `DMD`
+    Non-standard / accountable forms (e.g. `AFS000001`) default to `IGF`.
+    """
+    s = re.sub(r'^[^\w]+', '', str(stock_no or "")).strip().upper()
+    if s.startswith("DMR") or s.startswith("PROD"):
+        return "RAF"
+    elif s.startswith("DMDON") or s.startswith("DMD"):
+        return "DON"
+    elif s.startswith("DMEP") or s.startswith("DMCSP") or s.startswith("DMC"):
+        return "IGF"
+    return "IGF"
+
 def is_rsmi_or_master_file(fname, master_filename=None):
     u = fname.upper()
     if fname in SKIP_FILES:
         return True
-    if u.startswith("RSMI"):
+    if u.startswith("RSMI") or "-RSMI" in u or "_RSMI" in u:
         return True
-    if (master_filename and fname == master_filename) or ("POPULATED" in u):
+    if master_filename and fname.upper() == master_filename.upper():
+        return True
+    if "POPULATED" in u:
         return True
     return False
 
@@ -132,85 +176,69 @@ def _read_ris_file_items(fpath, rcc_lookup=None):
 
 def _build_recapitulation(rsmi_rows):
     """
-    Aggregates rsmi_rows by Stock No. preserving first-appearance order.
-    Returns list of tuples: (stock_no, total_qty, desc, unit)
+    Aggregates rsmi_rows by Stock No. preserving first-seen order.
+    Returns list of (stock_no, qty_sum, description, unit).
     """
-    ordered_codes = []
     recap_map = {}
-    for (ris_no, rcc_code, stock_no, desc, unit, qty) in rsmi_rows:
-        key = str(stock_no).strip()
-        if not key:
+    for r in rsmi_rows:
+        if len(r) == 6:
+            ris_no, rcc, stock_no, desc, unit, qty = r
+        elif len(r) == 5:
+            ris_no, stock_no, unit, desc, qty = r
+        else:
             continue
-        q_val = qty if isinstance(qty, (int, float)) else 0
-        if key not in recap_map:
-            ordered_codes.append(key)
-            recap_map[key] = {
-                "stock_no": key,
-                "qty": q_val,
+        if not stock_no:
+            continue
+        try:
+            q_int = int(float(qty)) if qty is not None else 0
+        except Exception:
+            q_int = 0
+        if stock_no not in recap_map:
+            recap_map[stock_no] = {
+                "stock_no": stock_no,
+                "qty": q_int,
                 "desc": desc,
                 "unit": unit,
             }
         else:
-            recap_map[key]["qty"] += q_val
-            if not recap_map[key]["unit"] and unit:
-                recap_map[key]["unit"] = unit
-            if not recap_map[key]["desc"] and desc:
-                recap_map[key]["desc"] = desc
-
+            recap_map[stock_no]["qty"] += q_int
     recap_rows = []
-    for code in ordered_codes:
-        info = recap_map[code]
-        q = info["qty"]
-        q_int = int(q) if isinstance(q, float) and q.is_integer() else q
-        recap_rows.append((info["stock_no"], q_int, info["desc"], info["unit"]))
+    for s_no, info in recap_map.items():
+        recap_rows.append((info["stock_no"], info["qty"], info["desc"], info["unit"]))
     return recap_rows
 
-def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, custodian_name=DEFAULT_CUSTODIAN):
+def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated Fund (IGF)", custodian_name=DEFAULT_CUSTODIAN):
     """
-    Generates the official ARMMC `RSMI FORMAT.xlsx` layout:
-      - Sheet 1 ("RSMI"):
-        * Rows 1–11: Official ARMMC Report of Supplies and Materials Issued header
-        * Rows 12..M: Supply/Property Division Main Table (Cols B..I populated: RIS No., RCC, Stock No., Item, Unit, Quantity Issued; Col J Unit Cost blank; Col K Amount formula `=+J{r}*I{r}`)
-        * Row M+1: Main Table Total Row (`=SUM(I12:I{M})` and `=SUM(K12:K{M})`)
-        * Rows M+2..M+3: Recapitulation Headers
-        * Rows M+4..R: Recapitulation Rows (Cols C..H populated: Stock No., Quantity, Item, Unit; Col I Unit Cost blank; Col J Total Cost formula `=+I{r}*E{r}`; Col K UACS Object Code blank)
-        * Row R+1: Recapitulation Total Row (`=SUM(E...)`, variance `=+I{main_tot}-E{recap_tot}`, `=SUM(J...)`, variance `=+K{main_tot}-J{recap_tot}`)
-        * Rows R+2..R+9: Certification & Signatory Block with Supply/Property Custodian Name in C{R+5}:G{R+5}
-      - Sheet 2 ("RIS Count Summary"):
-        * Per-RIS summary table for quick checking
+    Populates an openpyxl worksheet with the official ARMMC RSMI layout:
+      - 12 items per page
+      - Col B..I: RIS No., RCC, Stock No., Item, Unit, Quantity Issued
+      - Recapitulation Table on the SAME page aggregating that page's items
+      - Signatory Block at the bottom of every page
+      - Dynamic Fund Cluster label in Row 7 (e.g. Regular Agency Fund, Internally Generated Fund, Donations)
+      - Printable page breaks & A4 setup
     """
-    out_wb = openpyxl.Workbook()
-    ws = out_wb.active
-    ws.title = "RSMI"
-
-    # Balanced column widths so RIS No., Responsibility Center Code, Stock No., and Accounting headers fit on 1 line while maximizing A4 print zoom
     col_widths = {
         "A": 1.5,
-        "B": 16.5,   # RIS No. (fits OCT-2026-PHARM and ward RIS codes cleanly)
-        "C": 11.5,   # Responsibility Center Code (left half) / Recap Stock No. (left half)
-        "D": 11.5,   # Responsibility Center Code (right half) / Recap Stock No. (right half) -> C+D = 23 chars (fits 24-char RCC on 1 line)
-        "E": 13.5,   # Stock No. / Recap Quantity (fits DMCSP000018 & PRODMR000002 on 1 line)
-        "F": 20.0,   # Item (left half)
-        "G": 21.0,   # Item (right half) -> F+G = 41 chars wide, wraps long medicine descriptions cleanly
+        "B": 16.5,   # RIS No.
+        "C": 11.5,   # RCC (left) / Recap Stock No. (left)
+        "D": 11.5,   # RCC (right) / Recap Stock No. (right) -> C+D = 23 chars
+        "E": 13.5,   # Stock No. / Recap Quantity
+        "F": 20.0,   # Item (left)
+        "G": 21.0,   # Item (right) -> F+G = 41 chars
         "H": 9.5,    # Unit
         "I": 10.0,   # Quantity Issued / Recap Unit Cost
         "J": 11.0,   # Unit Cost / Recap Total Cost
-        "K": 12.5,   # Amount / Recap UACS Object Code -> J+K = 23.5 chars (fits Accounting subheader & UACS Object Code)
+        "K": 12.5,   # Amount / Recap UACS Object Code
     }
     for col_let, w in col_widths.items():
         ws.column_dimensions[col_let].width = w
 
     thin = Side(style="thin", color="000000")
-
-    acct_fmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
+    acct_fmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);;@'
     int_fmt = '#,##0'
-    var_int_fmt = '_(* #,##0_);_(* \\(#,##0\\);_(* "-"_);_(@_)'
+    var_int_fmt = '_(* #,##0_);_(* \\(#,##0\\);;@'
 
-    def _write_rsmi_top_banner(base_r):
-        """
-        Writes the 7-row top banner of RSMI (Title, Kind of Supplies, Spacers, Entity Name, Fund Cluster, Spacer)
-        starting at `base_r` (returns next available row `base_r + 7`).
-        """
+    def _write_top_banner(base_r):
         r_title = base_r
         r_kind = base_r + 1
         r_sp1 = base_r + 2
@@ -263,7 +291,7 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         ws.cell(r_fc, 2).alignment = Alignment(horizontal="left", vertical="center")
 
         ws.merge_cells(start_row=r_fc, start_column=4, end_row=r_fc, end_column=9)
-        ws.cell(r_fc, 4, "Internally Generated Fund")
+        ws.cell(r_fc, 4, str(fund_cluster_label or "Internally Generated Fund (IGF)"))
         ws.cell(r_fc, 4).font = Font(name="Calibri", size=12.0, bold=True)
         ws.cell(r_fc, 4).alignment = Alignment(horizontal="center", vertical="center")
         for c in range(4, 10):
@@ -280,11 +308,7 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         ws.cell(r_sp3, 2, " ")
         return r_sp3 + 1
 
-    def _write_main_table_headers(base_r):
-        """
-        Writes the 3-row Main Table column header block starting at `base_r`
-        (returns next available row `base_r + 3`).
-        """
+    def _write_main_headers(base_r):
         r_sub = base_r
         r_h1 = base_r + 1
         r_h2 = base_r + 2
@@ -352,10 +376,6 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         return r_h2 + 1
 
     def _write_recap_headers(base_r):
-        """
-        Writes the 2-row Recapitulation column header block starting at `base_r`
-        (returns next available row `base_r + 2`).
-        """
         recap_hdr1 = base_r
         recap_hdr2 = base_r + 1
         ws.row_dimensions[recap_hdr1].height = 18.0
@@ -405,18 +425,14 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         return recap_hdr2 + 1
 
     def _write_signatory_block(base_r):
-        """
-        Writes the 8-row Certification & Signatory Block + Original/Copy 2 footers
-        starting at `base_r` (returns last row `r_f2 = base_r + 7`).
-        """
-        r_s1 = base_r      # "Posted by:"
-        r_s2 = base_r + 1  # "I hereby certify..."
-        r_s3 = base_r + 2  # blank spacer
-        r_s4 = base_r + 3  # Printed Name of Supply and/or Property Custodian
-        r_s5 = base_r + 4  # "Signature over Printed Name of Supply and/or"
-        r_s6 = base_r + 5  # "Property Custodian"
-        r_f1 = base_r + 6  # "Original - Accounting Division..."
-        r_f2 = base_r + 7  # "Copy 2 - Supply and Property Custodian's file"
+        r_s1 = base_r
+        r_s2 = base_r + 1
+        r_s3 = base_r + 2
+        r_s4 = base_r + 3
+        r_s5 = base_r + 4
+        r_s6 = base_r + 5
+        r_f1 = base_r + 6
+        r_f2 = base_r + 7
 
         ws.row_dimensions[r_s1].height = 15.0
         ws.row_dimensions[r_s2].height = 15.0
@@ -505,8 +521,8 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
 
         return r_f2
 
-    # --- COMBINED SINGLE-PAGE RSMI LOOP (Part 1 Main Table + Part 2 Recapitulation on Every Page) ---
-    effective_rows = rsmi_rows if rsmi_rows else [("", DEFAULT_RCC, "", "", "", 0)]
+    # --- MAIN PAGE LOOP ---
+    effective_rows = rsmi_rows if rsmi_rows else [("", DEFAULT_RCC, "", "", "", None)]
     main_chunks = [
         effective_rows[i:i + RSMI_ITEMS_PER_PAGE]
         for i in range(0, len(effective_rows), RSMI_ITEMS_PER_PAGE)
@@ -516,15 +532,16 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
 
     ws.row_dimensions[1].height = 8.0
     cur_r = 2
+    r_f2_last = cur_r
 
     for p_idx, page_rows in enumerate(main_chunks):
         is_last_page = (p_idx == len(main_chunks) - 1)
 
-        # 1. Top Banner + 1st Part (Main Issuance Table) Headers
-        cur_r = _write_rsmi_top_banner(cur_r)
-        data_start_r = _write_main_table_headers(cur_r)
+        # 1. Top Banner + Main Table Headers
+        cur_r = _write_top_banner(cur_r)
+        data_start_r = _write_main_headers(cur_r)
 
-        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 12 slots per page)
+        # 2. Main Data Rows (12 per page)
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
             if slot_idx < len(page_rows):
@@ -550,8 +567,8 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
             c_itm = ws.cell(r, 6, desc if desc else None)
             c_unt = ws.cell(r, 8, unit if unit else None)
             c_qty = ws.cell(r, 9, qty if stock_no else None)
-            c_uc = ws.cell(r, 10, None)  # Left blank for Accounting Division
-            c_amt = ws.cell(r, 11, f"=+J{r}*I{r}")
+            c_uc = ws.cell(r, 10, None)
+            c_amt = ws.cell(r, 11, None)
 
             c_ris.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             c_rcc.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -579,7 +596,7 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         last_data_r = data_start_r + RSMI_ITEMS_PER_PAGE - 1
         main_data_ranges.append((data_start_r, last_data_r))
 
-        # 3. 1st Part Total / Continuation Row
+        # 3. Main Total / Continuation Row
         main_tot_row = last_data_r + 1
         ws.row_dimensions[main_tot_row].height = 20.0
 
@@ -594,12 +611,8 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
             c_main_qty_tot.alignment = Alignment(horizontal="center", vertical="center")
             c_main_qty_tot.number_format = int_fmt
 
-            ws.cell(main_tot_row, 10, None).number_format = acct_fmt
-
-            c_main_amt_tot = ws.cell(main_tot_row, 11, _build_chunked_sum_formula("K", main_data_ranges))
-            c_main_amt_tot.font = Font(name="Calibri", size=11.0, bold=True)
-            c_main_amt_tot.alignment = Alignment(horizontal="right", vertical="center")
-            c_main_amt_tot.number_format = acct_fmt
+            ws.cell(main_tot_row, 10, None)
+            c_main_amt_tot = ws.cell(main_tot_row, 11, None)
         else:
             ws.merge_cells(start_row=main_tot_row, start_column=2, end_row=main_tot_row, end_column=5)
             c_lbl = ws.cell(main_tot_row, 2, "TOTAL")
@@ -623,11 +636,11 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
                 right=thin if c in (5, 8, 9, 10, 11) else None,
             )
 
-        # 4. 2nd Part (Recapitulation Section) on the SAME Page — reflects the exact items from the 1st Part of this page
+        # 4. Recapitulation Section for this Page
         recap_start_row = _write_recap_headers(main_tot_row + 1)
         page_recap_rows = _build_recapitulation(page_rows)
         if not page_recap_rows:
-            page_recap_rows = [("", 0, "", "")]
+            page_recap_rows = [("", None, "", "")]
 
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = recap_start_row + slot_idx
@@ -652,9 +665,9 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
             c_qty = ws.cell(r, 5, r_qty if stock_no else None)
             c_itm = ws.cell(r, 6, desc if desc else None)
             c_unt = ws.cell(r, 8, unit if unit else None)
-            c_uc = ws.cell(r, 9, None)  # Blank for Accounting Division
-            c_tc = ws.cell(r, 10, f"=+I{r}*E{r}")
-            c_uacs = ws.cell(r, 11, None)  # Blank for Accounting Division
+            c_uc = ws.cell(r, 9, None)
+            c_tc = ws.cell(r, 10, None)
+            c_uacs = ws.cell(r, 11, None)
 
             c_stk.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             c_qty.alignment = Alignment(horizontal="center", vertical="center")
@@ -681,7 +694,7 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         recap_last_row = recap_start_row + RSMI_ITEMS_PER_PAGE - 1
         recap_data_ranges.append((recap_start_row, recap_last_row))
 
-        # 5. 2nd Part (Recapitulation) Total / Continuation Row on this Page
+        # 5. Recapitulation Total / Continuation Row
         recap_tot_row = recap_last_row + 1
         ws.row_dimensions[recap_tot_row].height = 20.0
         ws.merge_cells(start_row=recap_tot_row, start_column=2, end_row=recap_tot_row, end_column=4)
@@ -697,20 +710,10 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
             c_rec_qty_tot.alignment = Alignment(horizontal="center", vertical="center")
             c_rec_qty_tot.number_format = int_fmt
 
-            c_rec_var_qty = ws.cell(recap_tot_row, 8, f"=+I{main_tot_row}-E{recap_tot_row}")
-            c_rec_var_qty.font = Font(name="Calibri", size=8.0, bold=False, color="FF0000")
-            c_rec_var_qty.alignment = Alignment(horizontal="center", vertical="center")
-            c_rec_var_qty.number_format = var_int_fmt
-
-            c_rec_tc_tot = ws.cell(recap_tot_row, 10, _build_chunked_sum_formula("J", recap_data_ranges))
-            c_rec_tc_tot.font = Font(name="Calibri", size=11.0, bold=True)
-            c_rec_tc_tot.alignment = Alignment(horizontal="right", vertical="center")
-            c_rec_tc_tot.number_format = acct_fmt
-
-            c_rec_var_tc = ws.cell(recap_tot_row, 11, f"=+K{main_tot_row}-J{recap_tot_row}")
-            c_rec_var_tc.font = Font(name="Calibri", size=8.0, bold=False, color="FF0000")
-            c_rec_var_tc.alignment = Alignment(horizontal="right", vertical="center")
-            c_rec_var_tc.number_format = acct_fmt
+            ws.cell(recap_tot_row, 8, None)
+            ws.cell(recap_tot_row, 9, None)
+            ws.cell(recap_tot_row, 10, None)
+            ws.cell(recap_tot_row, 11, None)
         else:
             ws.cell(recap_tot_row, 5, None)
             c_rec_cont = ws.cell(recap_tot_row, 6, "Continue to the next page...")
@@ -729,14 +732,15 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
                 right=thin if c in (4, 5, 7, 8, 9, 10, 11) else None,
             )
 
-        # 6. Certification & Signatory Block at the bottom of this page
+        # 6. Certification & Signatory Block
         r_f2 = _write_signatory_block(recap_tot_row + 1)
+        r_f2_last = r_f2
         if not is_last_page:
             ws.row_breaks.append(Break(id=r_f2))
         cur_r = r_f2 + 1
 
-    # Configure Page Setup on RSMI sheet so all columns (B:K) fit cleanly on 1 page wide when printed
-    ws.print_area = f"B1:K{r_f2}"
+    # Page setup
+    ws.print_area = f"B1:K{r_f2_last}"
     ws.sheet_properties.pageSetUpPr.fitToPage = True
     ws.page_setup.paperSize = ws.PAPERSIZE_A4
     ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
@@ -750,7 +754,12 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
     ws.page_margins.header = 0.15
     ws.page_margins.footer = 0.15
 
-    # --- SHEET 2: RIS COUNT SUMMARY ---
+def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary"):
+    """
+    Creates Sheet 'RIS Count Summary' detailing per-RIS item counts, total quantity,
+    and a clear breakdown across RAF, IGF, and DON Fund Clusters.
+    """
+    thin = Side(style="thin", color="000000")
     header_font = Font(name="Calibri", size=11, bold=True, color="000000")
     header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     data_font = Font(name="Calibri", size=11, bold=False)
@@ -760,8 +769,12 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     align_right = Alignment(horizontal="right", vertical="center")
 
-    ws_sum = out_wb.create_sheet(title="RIS Count Summary")
-    sum_headers = ["RIS No.", "Office / Ward", "Item Count", "Total Quantity", "Source File"]
+    ws_sum = out_wb.create_sheet(title=title)
+    sum_headers = [
+        "RIS No.", "Office / Ward",
+        "RAF Qty (DMR/PROD)", "IGF Qty (DMEP/DMC)", "DON Qty (DMD/DMDON)",
+        "Item Count", "Total Quantity", "Source File"
+    ]
     ws_sum.row_dimensions[1].height = 24
     for col_idx, h_text in enumerate(sum_headers, start=1):
         cell = ws_sum.cell(1, col_idx, h_text)
@@ -770,16 +783,36 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         cell.alignment = align_center
         cell.border = border_all
 
+    grand_raf_qty = 0
+    grand_igf_qty = 0
+    grand_don_qty = 0
     grand_items = 0
     grand_qty = 0
-    for idx, srow in enumerate(summary_rows, start=2):
-        c1 = ws_sum.cell(idx, 1, srow["ris_no"] if srow["ris_no"] else None)
-        c2 = ws_sum.cell(idx, 2, srow["office"])
-        c3 = ws_sum.cell(idx, 3, srow["item_count"])
-        c4 = ws_sum.cell(idx, 4, srow["total_qty"])
-        c5 = ws_sum.cell(idx, 5, srow["filename"])
 
-        for c in (c1, c2, c3, c4, c5):
+    # Build index of items by ris_no for fast lookup
+    items_by_ris = {}
+    for r in rsmi_rows:
+        r_no = r[0]
+        items_by_ris.setdefault(r_no, []).append(r)
+
+    for idx, srow in enumerate(summary_rows, start=2):
+        r_no = srow.get("ris_no") or ""
+        matched_items = items_by_ris.get(r_no, [])
+
+        raf_q = sum(int(float(it[5])) for it in matched_items if classify_fund_cluster(it[2]) == "RAF")
+        igf_q = sum(int(float(it[5])) for it in matched_items if classify_fund_cluster(it[2]) == "IGF")
+        don_q = sum(int(float(it[5])) for it in matched_items if classify_fund_cluster(it[2]) == "DON")
+
+        c1 = ws_sum.cell(idx, 1, r_no if r_no else None)
+        c2 = ws_sum.cell(idx, 2, srow["office"])
+        c3 = ws_sum.cell(idx, 3, raf_q)
+        c4 = ws_sum.cell(idx, 4, igf_q)
+        c5 = ws_sum.cell(idx, 5, don_q)
+        c6 = ws_sum.cell(idx, 6, srow["item_count"])
+        c7 = ws_sum.cell(idx, 7, srow["total_qty"])
+        c8 = ws_sum.cell(idx, 8, srow["filename"])
+
+        for c in (c1, c2, c3, c4, c5, c6, c7, c8):
             c.font = data_font
             c.border = border_all
 
@@ -789,8 +822,17 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         c3.number_format = "#,##0"
         c4.alignment = align_right
         c4.number_format = "#,##0"
-        c5.alignment = align_left
+        c5.alignment = align_right
+        c5.number_format = "#,##0"
+        c6.alignment = align_right
+        c6.number_format = "#,##0"
+        c7.alignment = align_right
+        c7.number_format = "#,##0"
+        c8.alignment = align_left
 
+        grand_raf_qty += raf_q
+        grand_igf_qty += igf_q
+        grand_don_qty += don_q
         grand_items += srow["item_count"]
         grand_qty += srow["total_qty"]
 
@@ -799,24 +841,36 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
     ws_sum.cell(tot_row, 1).alignment = align_center
     ws_sum.cell(tot_row, 2, f"{len(summary_rows)} RIS File(s)").font = bold_font
     ws_sum.cell(tot_row, 2).alignment = align_left
-    ws_sum.cell(tot_row, 3, grand_items).font = bold_font
+    ws_sum.cell(tot_row, 3, grand_raf_qty).font = bold_font
     ws_sum.cell(tot_row, 3).alignment = align_right
     ws_sum.cell(tot_row, 3).number_format = "#,##0"
-    ws_sum.cell(tot_row, 4, grand_qty).font = bold_font
+    ws_sum.cell(tot_row, 4, grand_igf_qty).font = bold_font
     ws_sum.cell(tot_row, 4).alignment = align_right
     ws_sum.cell(tot_row, 4).number_format = "#,##0"
-    ws_sum.cell(tot_row, 5, "").font = bold_font
-    for col_idx in range(1, 6):
+    ws_sum.cell(tot_row, 5, grand_don_qty).font = bold_font
+    ws_sum.cell(tot_row, 5).alignment = align_right
+    ws_sum.cell(tot_row, 5).number_format = "#,##0"
+    ws_sum.cell(tot_row, 6, grand_items).font = bold_font
+    ws_sum.cell(tot_row, 6).alignment = align_right
+    ws_sum.cell(tot_row, 6).number_format = "#,##0"
+    ws_sum.cell(tot_row, 7, grand_qty).font = bold_font
+    ws_sum.cell(tot_row, 7).alignment = align_right
+    ws_sum.cell(tot_row, 7).number_format = "#,##0"
+    ws_sum.cell(tot_row, 8, "").font = bold_font
+    for col_idx in range(1, 9):
         ws_sum.cell(tot_row, col_idx).border = border_all
         ws_sum.cell(tot_row, col_idx).fill = header_fill
 
-    ws_sum.column_dimensions["A"].width = 28
-    ws_sum.column_dimensions["B"].width = 38
-    ws_sum.column_dimensions["C"].width = 15
-    ws_sum.column_dimensions["D"].width = 18
-    ws_sum.column_dimensions["E"].width = 48
+    ws_sum.column_dimensions["A"].width = 24
+    ws_sum.column_dimensions["B"].width = 34
+    ws_sum.column_dimensions["C"].width = 16
+    ws_sum.column_dimensions["D"].width = 19
+    ws_sum.column_dimensions["E"].width = 19
+    ws_sum.column_dimensions["F"].width = 13
+    ws_sum.column_dimensions["G"].width = 15
+    ws_sum.column_dimensions["H"].width = 44
     ws_sum.freeze_panes = "A2"
-    ws_sum.print_area = f"A1:E{tot_row}"
+    ws_sum.print_area = f"A1:H{tot_row}"
     ws_sum.sheet_properties.pageSetUpPr.fitToPage = True
     ws_sum.page_setup.paperSize = ws_sum.PAPERSIZE_A4
     ws_sum.page_setup.orientation = ws_sum.ORIENTATION_PORTRAIT
@@ -830,6 +884,56 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
     ws_sum.page_margins.header = 0.25
     ws_sum.page_margins.footer = 0.25
 
+def _write_rsmi_workbook(
+    rsmi_rows,
+    summary_rows,
+    output_xlsx,
+    output_xls=None,
+    custodian_name=DEFAULT_CUSTODIAN,
+    standalone_prefix="RSMI",
+):
+    """
+    Generates the official ARMMC RSMI deliverables segregated strictly by Fund Cluster:
+      1. Consolidated Master Workbook (`output_xlsx` & `output_xls`):
+         - Sheet 1: `RSMI - RAF` (Row 7: Regular Agency Fund (RAF), only DMR items)
+         - Sheet 2: `RSMI - IGF` (Row 7: Internally Generated Fund (IGF), only DMEP, DMC, DMCSP items)
+         - Sheet 3: `RSMI - DON` (Row 7: Donation Fund (DON), only DMD, DMDON items)
+         - Sheet 4: `RIS Count Summary` (Full breakdown across all 3 funds)
+      2. Standalone Dedicated Workbooks for each Fund Cluster in the same directory:
+         - `{prefix} - RAF.xlsx` & `.xls`
+         - `{prefix} - IGF.xlsx` & `.xls`
+         - `{prefix} - DON.xlsx` & `.xls`
+    """
+    # 1. Segregate rows by Fund Cluster
+    cluster_buckets = {"RAF": [], "IGF": [], "DON": []}
+    for row in rsmi_rows:
+        stock_no = row[2]
+        fc = classify_fund_cluster(stock_no)
+        cluster_buckets[fc].append(row)
+
+    # 2. Build Consolidated Workbook
+    out_wb = openpyxl.Workbook()
+    for idx, fc_meta in enumerate(FUND_CLUSTERS):
+        fc_code = fc_meta["code"]
+        fc_title = fc_meta["sheet_title"]
+        fc_label = fc_meta["full_label"]
+        rows_in_cluster = cluster_buckets[fc_code]
+
+        if idx == 0:
+            ws = out_wb.active
+            ws.title = fc_title
+        else:
+            ws = out_wb.create_sheet(title=fc_title)
+
+        _populate_rsmi_sheet(
+            ws,
+            rsmi_rows=rows_in_cluster,
+            fund_cluster_label=fc_label,
+            custodian_name=custodian_name,
+        )
+
+    _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary")
+
     try:
         out_wb.save(output_xlsx)
     except PermissionError:
@@ -840,7 +944,65 @@ def _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls=None, 
         except PermissionError:
             pass
     out_wb.close()
-    return grand_qty
+
+    # 3. Build Standalone Workbooks per Fund Cluster
+    out_dir = os.path.dirname(os.path.abspath(output_xlsx))
+    fund_files = {}
+
+    for fc_meta in FUND_CLUSTERS:
+        fc_code = fc_meta["code"]
+        fc_label = fc_meta["full_label"]
+        rows_in_cluster = cluster_buckets[fc_code]
+
+        single_xlsx_name = f"{standalone_prefix} - {fc_code}.xlsx"
+        single_xls_name = f"{standalone_prefix} - {fc_code}.xls"
+        single_xlsx_path = os.path.join(out_dir, single_xlsx_name)
+        single_xls_path = os.path.join(out_dir, single_xls_name)
+
+        s_wb = openpyxl.Workbook()
+        ws_single = s_wb.active
+        ws_single.title = "RSMI"
+
+        _populate_rsmi_sheet(
+            ws_single,
+            rsmi_rows=rows_in_cluster,
+            fund_cluster_label=fc_label,
+            custodian_name=custodian_name,
+        )
+        _write_summary_sheet(s_wb, summary_rows, rows_in_cluster, title="RIS Count Summary")
+
+        try:
+            s_wb.save(single_xlsx_path)
+        except PermissionError:
+            pass
+        if single_xls_path:
+            try:
+                s_wb.save(single_xls_path)
+            except PermissionError:
+                pass
+        s_wb.close()
+
+        c_qty = sum(int(float(r[5])) for r in rows_in_cluster)
+        fund_files[fc_code] = {
+            "xlsx": single_xlsx_name,
+            "xls": single_xls_name,
+            "xlsx_path": single_xlsx_path,
+            "xls_path": single_xls_path,
+            "item_count": len(rows_in_cluster),
+            "total_qty": c_qty,
+            "label": fc_label,
+        }
+
+    grand_qty = sum(int(float(r[5])) for r in rsmi_rows)
+    return {
+        "grand_qty": grand_qty,
+        "fund_files": fund_files,
+        "breakdown": {
+            "RAF": {"items": len(cluster_buckets["RAF"]), "qty": fund_files["RAF"]["total_qty"]},
+            "IGF": {"items": len(cluster_buckets["IGF"]), "qty": fund_files["IGF"]["total_qty"]},
+            "DON": {"items": len(cluster_buckets["DON"]), "qty": fund_files["DON"]["total_qty"]},
+        },
+    }
 
 def generate_populated_rsmi(
     final_dir,
@@ -850,8 +1012,12 @@ def generate_populated_rsmi(
     custodian_name=DEFAULT_CUSTODIAN,
 ):
     """
-    Generates a separate RSMI workbook specifically for `RIS - <MONTH>_<YEAR>_POPULATED.xlsx`,
-    named `RSMI-<MONTH>_<YEAR>-Populated.xlsx` (and `.xls`) inside `final_dir`.
+    Generates segregated RSMI workbooks specifically for `RIS - <MONTH>_<YEAR>_POPULATED.xlsx`,
+    including:
+      - `RSMI-<MONTH>_<YEAR>-Populated.xlsx` / `.xls` (Multi-sheet: RAF, IGF, DON, Summary)
+      - `RSMI-<MONTH>_<YEAR>-Populated - RAF.xlsx` / `.xls` (DMR only)
+      - `RSMI-<MONTH>_<YEAR>-Populated - IGF.xlsx` / `.xls` (DMEP, DMC, DMCSP only)
+      - `RSMI-<MONTH>_<YEAR>-Populated - DON.xlsx` / `.xls` (DMD, DMDON only)
     """
     if not master_filename:
         for f in os.listdir(final_dir):
@@ -871,8 +1037,9 @@ def generate_populated_rsmi(
         month_upper = m_match.group(1).upper()
         year_str = m_match.group(2)
 
-    pop_xlsx_name = f"RSMI-{month_upper}_{year_str}-Populated.xlsx"
-    pop_xls_name = f"RSMI-{month_upper}_{year_str}-Populated.xls"
+    base_prefix = f"RSMI-{month_upper}_{year_str}-Populated"
+    pop_xlsx_name = f"{base_prefix}.xlsx"
+    pop_xls_name = f"{base_prefix}.xls"
     pop_xlsx_path = os.path.join(final_dir, pop_xlsx_name)
     pop_xls_path = os.path.join(final_dir, pop_xls_name)
 
@@ -885,7 +1052,14 @@ def generate_populated_rsmi(
         "filename": master_filename,
     }]
 
-    _write_rsmi_workbook(rows, summary_rows, pop_xlsx_path, pop_xls_path, custodian_name=custodian_name)
+    write_res = _write_rsmi_workbook(
+        rows,
+        summary_rows,
+        pop_xlsx_path,
+        pop_xls_path,
+        custodian_name=custodian_name,
+        standalone_prefix=base_prefix,
+    )
 
     return {
         "filename": pop_xlsx_name,
@@ -897,13 +1071,18 @@ def generate_populated_rsmi(
         "office": office,
         "item_count": item_count,
         "total_qty": total_qty,
+        "fund_files": write_res["fund_files"],
+        "breakdown": write_res["breakdown"],
     }
 
 def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=None, custodian_name=None):
     """
     Scans all generated Per-Ward RIS .xlsx files inside `final_dir` (excluding Master Populated RIS,
-    RSMI files, and any files in `excluded_files`), and builds `RSMI.xlsx` + `RSMI.xls`
-    in the official ARMMC RSMI FORMAT.
+    RSMI files, and any files in `excluded_files`), and builds:
+      - `RSMI.xlsx` & `RSMI.xls` (Multi-sheet: RAF, IGF, DON, Summary)
+      - `RSMI - RAF.xlsx` & `RSMI - RAF.xls`
+      - `RSMI - IGF.xlsx` & `RSMI - IGF.xls`
+      - `RSMI - DON.xlsx` & `RSMI - DON.xls`
     """
     output_xlsx = os.path.join(final_dir, "RSMI.xlsx")
     output_xls = os.path.join(final_dir, "RSMI.xls")
@@ -951,13 +1130,22 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
             "filename": fname,
         })
 
-    grand_qty = _write_rsmi_workbook(rsmi_rows, summary_rows, output_xlsx, output_xls, custodian_name=custodian_name)
+    write_res = _write_rsmi_workbook(
+        rsmi_rows,
+        summary_rows,
+        output_xlsx,
+        output_xls,
+        custodian_name=custodian_name,
+        standalone_prefix="RSMI",
+    )
 
     return {
         "rsmi_path": output_xlsx,
         "rsmi_xls_path": output_xls,
         "total_ris_files": len(summary_rows),
         "total_medicine_rows": len(rsmi_rows),
-        "grand_total_qty": grand_qty,
+        "grand_total_qty": write_res["grand_qty"],
+        "fund_files": write_res["fund_files"],
+        "breakdown": write_res["breakdown"],
         "summary_rows": summary_rows,
     }
