@@ -223,9 +223,38 @@ def build_ris_workbook(
             cell.border = border_all_thin
 
         # 3. Data Rows for this page (Always standardized to RIS_ITEMS_PER_PAGE = 22 rows per page)
+        # Determine optimal row heights so the table extends near the bottom margin without overflowing
+        slot_lines = []
+        for slot_idx in range(RIS_ITEMS_PER_PAGE):
+            if slot_idx < len(page_items):
+                item = page_items[slot_idx]
+                desc = str(item.get("Description", item.get("Item Description", ""))).strip()
+                lines = max(1, math.ceil(len(desc) / 30.0)) if desc else 1
+                slot_lines.append(min(lines, 3))
+            else:
+                slot_lines.append(1)
+
+        total_lines_weight = sum(slot_lines)
+        if total_lines_weight <= 26:
+            # Light / standard ward (mostly single-line or filler rows) -> expand cells vertically to 28.0pt
+            h_single = 28.0
+            h_double = 34.0
+            h_triple = 40.0
+        elif total_lines_weight <= 35:
+            # Moderate ward -> 25.0pt
+            h_single = 25.0
+            h_double = 30.0
+            h_triple = 38.0
+        else:
+            # Heavy multi-line ward (ICU Charity, Cancer, etc.) -> 22.0pt to guarantee no page overflow
+            h_single = 22.0
+            h_double = 27.5
+            h_triple = 35.0
+
         data_start_r = r8 + 1
         for slot_idx in range(RIS_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
+            lines = slot_lines[slot_idx]
             if slot_idx < len(page_items):
                 item = page_items[slot_idx]
                 code = str(item.get("Item Code", "")).strip()
@@ -247,23 +276,21 @@ def build_ris_workbook(
                 ws.cell(r, 7, qty)
                 ws.cell(r, 8, None)
 
-                # Balanced cell heights ensuring total page height fits A4 with room for signatories
-                est_lines = max(1, math.ceil(len(desc) / 30.0)) if desc else 1
-                if est_lines == 1:
-                    ws.row_dimensions[r].height = 22.0
-                elif est_lines == 2:
-                    ws.row_dimensions[r].height = 28.0
+                if lines == 1:
+                    ws.row_dimensions[r].height = h_single
+                elif lines == 2:
+                    ws.row_dimensions[r].height = h_double
                 else:
-                    ws.row_dimensions[r].height = 36.0
+                    ws.row_dimensions[r].height = h_triple
             else:
                 # Blank bordered filler row to standardize page height across all wards
                 for c in range(1, 9):
                     ws.cell(r, c, None)
-                ws.row_dimensions[r].height = 22.0
+                ws.row_dimensions[r].height = h_single
 
             for c in range(1, 9):
                 cell = ws.cell(r, c)
-                cell.font = Font(name='Calibri', size=10.0, bold=False)
+                cell.font = Font(name='Calibri', size=10.5, bold=False)
                 if c in (1, 2):
                     cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
                 elif c == 3:
@@ -283,7 +310,7 @@ def build_ris_workbook(
         total_row = data_end_r + 1
 
         # 4. TOTAL / Continuation Row
-        ws.row_dimensions[total_row].height = 22.0
+        ws.row_dimensions[total_row].height = 24.0
         ws.cell(total_row, 1).value = 'TOTAL'
         ws.cell(total_row, 2).value = None
         if is_last_page:
@@ -305,7 +332,7 @@ def build_ris_workbook(
         for c in range(1, 9):
             cell = ws.cell(total_row, c)
             if not is_last_page and c in (2, 3):
-                cell.font = Font(name='Calibri', size=10.5, bold=True, italic=True)
+                cell.font = Font(name='Calibri', size=11.0, bold=True, italic=True)
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             elif c in (4, 7):
                 cell.font = Font(name='Calibri', size=13.0, bold=True)
@@ -322,7 +349,7 @@ def build_ris_workbook(
 
         # 5. Purpose / Remarks Row (total_row + 1)
         purpose_row = total_row + 1
-        ws.row_dimensions[purpose_row].height = 26.0
+        ws.row_dimensions[purpose_row].height = 28.0
         if is_master:
             purpose_text = f"Purpose: For Pharmacy Medicines Consumption (General & Consignment) for the month of {month_year_label}"
         else:
@@ -332,7 +359,7 @@ def build_ris_workbook(
         ws.merge_cells(start_row=purpose_row, start_column=1, end_row=purpose_row, end_column=8)
         for c in range(1, 9):
             cell = ws.cell(purpose_row, c)
-            cell.font = Font(name='Calibri', size=11.0, bold=True)
+            cell.font = Font(name='Calibri', size=11.5, bold=True)
             cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
             cell.border = Border(
                 top=thin,
@@ -347,11 +374,11 @@ def build_ris_workbook(
         r_desig = purpose_row + 3
         r_date = purpose_row + 4
 
-        # Room in r_sig_hdr (42pt) for wet signature, and 22pt/20pt for Name, Designation, and Date
-        ws.row_dimensions[r_sig_hdr].height = 42.0
-        ws.row_dimensions[r_name].height = 22.0
-        ws.row_dimensions[r_desig].height = 20.0
-        ws.row_dimensions[r_date].height = 20.0
+        # Generous room in r_sig_hdr (48pt) for wet signature, and 24pt/22pt for Name, Designation, and Date
+        ws.row_dimensions[r_sig_hdr].height = 48.0
+        ws.row_dimensions[r_name].height = 24.0
+        ws.row_dimensions[r_desig].height = 22.0
+        ws.row_dimensions[r_date].height = 22.0
 
         # Row: Signature Header (with ample blank space below "Requested By:", "Approved By:", etc. for wet signature)
         ws.cell(r_sig_hdr, 1).value = 'Signature:'
