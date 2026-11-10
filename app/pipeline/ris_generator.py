@@ -82,16 +82,16 @@ def build_ris_workbook(
     ws = wb.active
     ws.title = "RIS"
 
-    # 1. Column widths (8 columns: A through H) with balanced widths for Signatory columns (Requested By, Approved By, Issued By, Received By)
+    # 1. Column widths (8 columns: A through H) with balanced 32.0-width signatory columns
     col_widths = {
-        'A': 14.0,  # Stock No. / Signatory Row Labels
-        'B': 10.5,  # Unit / Requested By (left)
-        'C': 34.0,  # Description / Requested By (right) -> B+C = 44.5
-        'D': 12.0,  # Quantity (Requisition) / Approved By (left)
-        'E': 10.0,  # Yes (Stock Available) / Approved By (right) -> D+E = 22.0
-        'F': 10.0,  # No (Stock Available) / Issued By (left)
-        'G': 12.0,  # Quantity (Issue) / Issued By (right) -> F+G = 22.0
-        'H': 22.0   # Remarks (Issue) / Received By -> H = 22.0
+        'A': 13.5,  # Stock No. / Signatory Labels (left half)
+        'B': 9.5,   # Unit / Signatory Labels (right half) -> A+B = 23.0
+        'C': 32.0,  # Description / Requested By -> width 32.0
+        'D': 16.0,  # Quantity (Requisition) / Approved By (left)
+        'E': 16.0,  # Yes (Stock Available) / Approved By (right) -> D+E = 32.0
+        'F': 16.0,  # No (Stock Available) / Issued By (left)
+        'G': 16.0,  # Quantity (Issue) / Issued By (right) -> F+G = 32.0
+        'H': 32.0   # Remarks (Issue) / Received By -> H = 32.0
     }
     for col_let, w in col_widths.items():
         ws.column_dimensions[col_let].width = w
@@ -290,7 +290,8 @@ def build_ris_workbook(
             ws.cell(total_row, 7).value = _build_chunked_sum_formula("G", data_row_ranges) if data_row_ranges else 0
             ws.cell(total_row, 8).value = None
         else:
-            ws.cell(total_row, 3).value = 'Continue to the next page...'
+            ws.merge_cells(start_row=total_row, start_column=2, end_row=total_row, end_column=3)
+            ws.cell(total_row, 2).value = f'Continue to the next page... ({page_idx + 1} of {total_pages})'
             ws.cell(total_row, 4).value = None
             ws.cell(total_row, 5).value = None
             ws.cell(total_row, 6).value = None
@@ -299,7 +300,7 @@ def build_ris_workbook(
 
         for c in range(1, 9):
             cell = ws.cell(total_row, c)
-            if not is_last_page and c == 3:
+            if not is_last_page and c in (2, 3):
                 cell.font = Font(name='Calibri', size=11.0, bold=True, italic=True)
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             elif c in (4, 7):
@@ -352,13 +353,13 @@ def build_ris_workbook(
         ws.cell(r_sig_hdr, 1).value = 'Signature:'
         ws.cell(r_sig_hdr, 1).font = Font(name='Calibri', size=11.0, bold=True)
         ws.cell(r_sig_hdr, 1).alignment = Alignment(horizontal='left', vertical='bottom')
-        ws.cell(r_sig_hdr, 1).border = border_all_thin
+        ws.merge_cells(start_row=r_sig_hdr, start_column=1, end_row=r_sig_hdr, end_column=2)
+        set_range_border(ws, 1, r_sig_hdr, 2, r_sig_hdr, top=thin, bottom=thin, left=thin, right=thin)
 
-        ws.cell(r_sig_hdr, 2).value = 'Requested By:'
-        ws.cell(r_sig_hdr, 2).font = Font(name='Calibri', size=11.0, bold=True)
-        ws.cell(r_sig_hdr, 2).alignment = Alignment(horizontal='left', vertical='top')
-        ws.merge_cells(start_row=r_sig_hdr, start_column=2, end_row=r_sig_hdr, end_column=3)
-        set_range_border(ws, 2, r_sig_hdr, 3, r_sig_hdr, top=thin, bottom=thin, left=thin, right=thin)
+        ws.cell(r_sig_hdr, 3).value = 'Requested By:'
+        ws.cell(r_sig_hdr, 3).font = Font(name='Calibri', size=11.0, bold=True)
+        ws.cell(r_sig_hdr, 3).alignment = Alignment(horizontal='left', vertical='top')
+        ws.cell(r_sig_hdr, 3).border = border_all_thin
 
         ws.cell(r_sig_hdr, 4).value = 'Approved By:'
         ws.cell(r_sig_hdr, 4).font = Font(name='Calibri', size=11.0, bold=True)
@@ -381,16 +382,16 @@ def build_ris_workbook(
         ws.cell(r_name, 1).value = 'Printed Name:'
         ws.cell(r_name, 1).font = Font(name='Calibri', size=11.0, bold=True)
         ws.cell(r_name, 1).alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
-        ws.cell(r_name, 1).border = border_all_thin
+        ws.merge_cells(start_row=r_name, start_column=1, end_row=r_name, end_column=2)
+        set_range_border(ws, 1, r_name, 2, r_name, top=thin, bottom=thin, left=thin, right=thin)
 
-        ws.cell(r_name, 2).value = req_by_name
-        ws.cell(r_name, 2).font = Font(name='Calibri', size=11.0, bold=True)
-        ws.cell(r_name, 2).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        ws.merge_cells(start_row=r_name, start_column=2, end_row=r_name, end_column=3)
-        set_range_border(ws, 2, r_name, 3, r_name, top=thin, bottom=thin, left=thin, right=thin)
+        ws.cell(r_name, 3).value = req_by_name
+        ws.cell(r_name, 3).font = Font(name='Calibri', size=10.5, bold=True)
+        ws.cell(r_name, 3).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws.cell(r_name, 3).border = border_all_thin
 
         ws.cell(r_name, 4).value = app_by_name
-        ws.cell(r_name, 4).font = Font(name='Calibri', size=11.0, bold=True)
+        ws.cell(r_name, 4).font = Font(name='Calibri', size=10.5, bold=True)
         ws.cell(r_name, 4).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         ws.merge_cells(start_row=r_name, start_column=4, end_row=r_name, end_column=5)
         set_range_border(ws, 4, r_name, 5, r_name, top=thin, bottom=thin, left=thin, right=thin)
@@ -406,16 +407,16 @@ def build_ris_workbook(
         ws.cell(r_desig, 1).value = 'Designation:'
         ws.cell(r_desig, 1).font = Font(name='Calibri', size=11.0, bold=True)
         ws.cell(r_desig, 1).alignment = Alignment(horizontal='left', vertical='center')
-        ws.cell(r_desig, 1).border = border_all_thin
+        ws.merge_cells(start_row=r_desig, start_column=1, end_row=r_desig, end_column=2)
+        set_range_border(ws, 1, r_desig, 2, r_desig, top=thin, bottom=thin, left=thin, right=thin)
 
-        ws.cell(r_desig, 2).value = req_by_desig
-        ws.cell(r_desig, 2).font = Font(name='Calibri', size=11.0, bold=False)
-        ws.cell(r_desig, 2).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        ws.merge_cells(start_row=r_desig, start_column=2, end_row=r_desig, end_column=3)
-        set_range_border(ws, 2, r_desig, 3, r_desig, top=thin, bottom=thin, left=thin, right=thin)
+        ws.cell(r_desig, 3).value = req_by_desig
+        ws.cell(r_desig, 3).font = Font(name='Calibri', size=10.0, bold=False)
+        ws.cell(r_desig, 3).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws.cell(r_desig, 3).border = border_all_thin
 
         ws.cell(r_desig, 4).value = app_by_desig
-        ws.cell(r_desig, 4).font = Font(name='Calibri', size=11.0, bold=False)
+        ws.cell(r_desig, 4).font = Font(name='Calibri', size=10.0, bold=False)
         ws.cell(r_desig, 4).alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         ws.merge_cells(start_row=r_desig, start_column=4, end_row=r_desig, end_column=5)
         set_range_border(ws, 4, r_desig, 5, r_desig, top=thin, bottom=thin, left=thin, right=thin)
@@ -431,16 +432,16 @@ def build_ris_workbook(
         ws.cell(r_date, 1).value = 'Date:'
         ws.cell(r_date, 1).font = Font(name='Calibri', size=11.0, bold=True)
         ws.cell(r_date, 1).alignment = Alignment(horizontal='left', vertical='center')
-        ws.cell(r_date, 1).border = border_all_thin
+        ws.merge_cells(start_row=r_date, start_column=1, end_row=r_date, end_column=2)
+        set_range_border(ws, 1, r_date, 2, r_date, top=thin, bottom=thin, left=thin, right=thin)
 
-        ws.cell(r_date, 2).value = sig_date
-        ws.cell(r_date, 2).font = Font(name='Calibri', size=11.0, bold=False)
-        ws.cell(r_date, 2).alignment = Alignment(horizontal='center', vertical='center')
-        ws.merge_cells(start_row=r_date, start_column=2, end_row=r_date, end_column=3)
-        set_range_border(ws, 2, r_date, 3, r_date, top=thin, bottom=thin, left=thin, right=thin)
+        ws.cell(r_date, 3).value = sig_date
+        ws.cell(r_date, 3).font = Font(name='Calibri', size=10.0, bold=False)
+        ws.cell(r_date, 3).alignment = Alignment(horizontal='center', vertical='center')
+        ws.cell(r_date, 3).border = border_all_thin
 
         ws.cell(r_date, 4).value = sig_date
-        ws.cell(r_date, 4).font = Font(name='Calibri', size=11.0, bold=False)
+        ws.cell(r_date, 4).font = Font(name='Calibri', size=10.0, bold=False)
         ws.cell(r_date, 4).alignment = Alignment(horizontal='center', vertical='center')
         ws.merge_cells(start_row=r_date, start_column=4, end_row=r_date, end_column=5)
         set_range_border(ws, 4, r_date, 5, r_date, top=thin, bottom=thin, left=thin, right=thin)
@@ -452,10 +453,18 @@ def build_ris_workbook(
         ws.cell(r_date, 8).value = None
         ws.cell(r_date, 8).border = border_all_thin
 
-        if not is_last_page:
-            ws.row_breaks.append(Break(id=r_date))
+        # 7. Page count row at bottom right (e.g., "1 of 20")
+        r_pg = r_date + 1
+        ws.row_dimensions[r_pg].height = 16.0
+        if total_pages > 1:
+            ws.cell(r_pg, 8).value = f"{page_idx + 1} of {total_pages}"
+            ws.cell(r_pg, 8).font = Font(name='Calibri', size=10.0, italic=True)
+            ws.cell(r_pg, 8).alignment = Alignment(horizontal='right', vertical='center')
 
-        cur_row = r_date + 1
+        if not is_last_page:
+            ws.row_breaks.append(Break(id=r_pg))
+
+        cur_row = r_pg + 1
 
     last_sheet_row = cur_row - 1
 
@@ -473,6 +482,7 @@ def build_ris_workbook(
     ws.page_margins.bottom = 0.35
     ws.page_margins.header = 0.2
     ws.page_margins.footer = 0.2
+    ws.oddFooter.right.text = "&P of &N"
 
     try:
         wb.save(dest_path)

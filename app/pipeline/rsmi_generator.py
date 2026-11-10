@@ -6,7 +6,7 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.worksheet.pagebreak import Break
 from .rcc_lookup import RccLookup
 
-RSMI_ITEMS_PER_PAGE = 12
+RSMI_ITEMS_PER_PAGE = 14
 
 def _build_chunked_sum_formula(col_letter, row_ranges, chunk_size=20):
     """
@@ -424,15 +424,19 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             )
         return recap_hdr2 + 1
 
-    def _write_signatory_block(base_r):
-        r_s1 = base_r
-        r_s2 = base_r + 1
-        r_s3 = base_r + 2
-        r_s4 = base_r + 3
-        r_s5 = base_r + 4
-        r_s6 = base_r + 5
-        r_f1 = base_r + 6
-        r_f2 = base_r + 7
+    def _write_signatory_block(base_r, page_num=None, total_pages=None):
+        """
+        Writes the 8-row Certification & Signatory Block + Original/Copy 2 footers
+        starting at `base_r` (returns last row `r_f2 = base_r + 7`).
+        """
+        r_s1 = base_r      # "Posted by:"
+        r_s2 = base_r + 1  # "I hereby certify..."
+        r_s3 = base_r + 2  # blank spacer
+        r_s4 = base_r + 3  # Printed Name of Supply and/or Property Custodian
+        r_s5 = base_r + 4  # "Signature over Printed Name of Supply and/or"
+        r_s6 = base_r + 5  # "Property Custodian"
+        r_f1 = base_r + 6  # "Original - Accounting Division..."
+        r_f2 = base_r + 7  # "Copy 2 - Supply and Property Custodian's file"
 
         ws.row_dimensions[r_s1].height = 15.0
         ws.row_dimensions[r_s2].height = 15.0
@@ -512,12 +516,17 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         ws.cell(r_f1, 3).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(r_f1, 4, "Accounting Division/Unit to support the JEV drawn to record issues of stocks").font = Font(name="Calibri", size=10.0)
 
-        ws.merge_cells(start_row=r_f2, start_column=4, end_row=r_f2, end_column=11)
+        ws.merge_cells(start_row=r_f2, start_column=4, end_row=r_f2, end_column=10)
         ws.cell(r_f2, 2, "Copy 2").font = Font(name="Calibri", size=10.0, italic=True)
         ws.cell(r_f2, 2).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(r_f2, 3, "-").font = Font(name="Calibri", size=10.0)
         ws.cell(r_f2, 3).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(r_f2, 4, "Supply and Property Custodian's file").font = Font(name="Calibri", size=10.0)
+
+        if page_num is not None and total_pages is not None:
+            c_pg = ws.cell(r_f2, 11, f"{page_num} of {total_pages}")
+            c_pg.font = Font(name="Calibri", size=10.0, italic=True)
+            c_pg.alignment = Alignment(horizontal="right", vertical="center")
 
         return r_f2
 
@@ -541,7 +550,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         cur_r = _write_top_banner(cur_r)
         data_start_r = _write_main_headers(cur_r)
 
-        # 2. Main Data Rows (12 per page)
+        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 14 slots per page)
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
             if slot_idx < len(page_rows):
@@ -552,11 +561,11 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             desc_str = str(desc or "")
             est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
             if est_lines == 1:
-                ws.row_dimensions[r].height = 20.0
+                ws.row_dimensions[r].height = 19.0
             elif est_lines == 2:
-                ws.row_dimensions[r].height = 26.0
+                ws.row_dimensions[r].height = 25.0
             else:
-                ws.row_dimensions[r].height = 33.0
+                ws.row_dimensions[r].height = 32.0
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -620,8 +629,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             c_lbl.alignment = Alignment(horizontal="center", vertical="center")
 
             ws.merge_cells(start_row=main_tot_row, start_column=6, end_row=main_tot_row, end_column=8)
-            c_cont = ws.cell(main_tot_row, 6, "Continue to the next page...")
-            c_cont.font = Font(name="Calibri", size=10.5, bold=True, italic=True)
+            c_cont = ws.cell(main_tot_row, 6, f"Continue to the next page... ({p_idx + 1} of {len(main_chunks)})")
+            c_cont.font = Font(name="Calibri", size=10.0, bold=True, italic=True)
             c_cont.alignment = Alignment(horizontal="center", vertical="center")
 
             ws.cell(main_tot_row, 9, None)
@@ -652,11 +661,11 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             desc_str = str(desc or "")
             est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
             if est_lines == 1:
-                ws.row_dimensions[r].height = 20.0
+                ws.row_dimensions[r].height = 19.0
             elif est_lines == 2:
-                ws.row_dimensions[r].height = 26.0
+                ws.row_dimensions[r].height = 25.0
             else:
-                ws.row_dimensions[r].height = 33.0
+                ws.row_dimensions[r].height = 32.0
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -716,8 +725,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             ws.cell(recap_tot_row, 11, None)
         else:
             ws.cell(recap_tot_row, 5, None)
-            c_rec_cont = ws.cell(recap_tot_row, 6, "Continue to the next page...")
-            c_rec_cont.font = Font(name="Calibri", size=10.5, bold=True, italic=True)
+            c_rec_cont = ws.cell(recap_tot_row, 6, f"Continue to the next page... ({p_idx + 1} of {len(main_chunks)})")
+            c_rec_cont.font = Font(name="Calibri", size=10.0, bold=True, italic=True)
             c_rec_cont.alignment = Alignment(horizontal="center", vertical="center")
             ws.cell(recap_tot_row, 8, None)
             ws.cell(recap_tot_row, 9, None)
@@ -732,8 +741,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
                 right=thin if c in (4, 5, 7, 8, 9, 10, 11) else None,
             )
 
-        # 6. Certification & Signatory Block
-        r_f2 = _write_signatory_block(recap_tot_row + 1)
+        # 6. Certification & Signatory Block at the bottom of this page
+        r_f2 = _write_signatory_block(recap_tot_row + 1, page_num=p_idx + 1, total_pages=len(main_chunks))
         r_f2_last = r_f2
         if not is_last_page:
             ws.row_breaks.append(Break(id=r_f2))
@@ -753,6 +762,9 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
     ws.page_margins.bottom = 0.25
     ws.page_margins.header = 0.15
     ws.page_margins.footer = 0.15
+    ws.oddFooter.right.text = "&P of &N"
+    ws.oddFooter.right.font = "Calibri"
+    ws.oddFooter.right.size = 10
 
 def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary"):
     """
