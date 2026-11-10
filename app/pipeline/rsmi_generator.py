@@ -6,7 +6,7 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.worksheet.pagebreak import Break
 from .rcc_lookup import RccLookup
 
-RSMI_ITEMS_PER_PAGE = 14
+RSMI_ITEMS_PER_PAGE = 16
 
 def _build_chunked_sum_formula(col_letter, row_ranges, chunk_size=20):
     """
@@ -262,8 +262,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         for c in range(7, 10):
             ws.cell(r_kind, c).border = Border(bottom=thin)
 
-        ws.row_dimensions[r_sp1].height = 6.0
-        ws.row_dimensions[r_sp2].height = 6.0
+        ws.row_dimensions[r_sp1].height = 2.0
+        ws.row_dimensions[r_sp2].height = 2.0
         ws.merge_cells(start_row=r_sp1, start_column=2, end_row=r_sp1, end_column=11)
         ws.merge_cells(start_row=r_sp2, start_column=2, end_row=r_sp2, end_column=11)
 
@@ -303,7 +303,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         ws.cell(r_fc, 11).border = Border(top=thin, bottom=thin)
 
         # Spacer
-        ws.row_dimensions[r_sp3].height = 6.0
+        ws.row_dimensions[r_sp3].height = 2.0
         ws.merge_cells(start_row=r_sp3, start_column=2, end_row=r_sp3, end_column=11)
         ws.cell(r_sp3, 2, " ")
         return r_sp3 + 1
@@ -313,7 +313,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         r_h1 = base_r + 1
         r_h2 = base_r + 2
 
-        ws.row_dimensions[r_sub].height = 18.0
+        ws.row_dimensions[r_sub].height = 16.0
         ws.merge_cells(start_row=r_sub, start_column=2, end_row=r_sub, end_column=9)
         ws.cell(r_sub, 2, "To be filled up by the Supply and/or Property Division/Unit")
         ws.cell(r_sub, 2).font = Font(name="Calibri", size=10.0, italic=True)
@@ -333,8 +333,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         ws.cell(r_sub, 10).border = Border(top=thin, bottom=thin, left=thin)
         ws.cell(r_sub, 11).border = Border(top=thin, bottom=thin, right=thin)
 
-        ws.row_dimensions[r_h1].height = 18.0
-        ws.row_dimensions[r_h2].height = 18.0
+        ws.row_dimensions[r_h1].height = 16.0
+        ws.row_dimensions[r_h2].height = 16.0
 
         ws.merge_cells(start_row=r_h1, start_column=2, end_row=r_h2, end_column=2)
         ws.cell(r_h1, 2, "RIS No.")
@@ -378,8 +378,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
     def _write_recap_headers(base_r):
         recap_hdr1 = base_r
         recap_hdr2 = base_r + 1
-        ws.row_dimensions[recap_hdr1].height = 18.0
-        ws.row_dimensions[recap_hdr2].height = 20.0
+        ws.row_dimensions[recap_hdr1].height = 16.0
+        ws.row_dimensions[recap_hdr2].height = 18.0
 
         ws.merge_cells(start_row=recap_hdr1, start_column=3, end_row=recap_hdr1, end_column=5)
         ws.cell(recap_hdr1, 3, "Recapitulation:")
@@ -438,14 +438,14 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         r_f1 = base_r + 6  # "Original - Accounting Division..."
         r_f2 = base_r + 7  # "Copy 2 - Supply and Property Custodian's file"
 
-        ws.row_dimensions[r_s1].height = 15.0
-        ws.row_dimensions[r_s2].height = 15.0
-        ws.row_dimensions[r_s3].height = 22.0
-        ws.row_dimensions[r_s4].height = 17.0
-        ws.row_dimensions[r_s5].height = 14.5
-        ws.row_dimensions[r_s6].height = 14.5
-        ws.row_dimensions[r_f1].height = 14.5
-        ws.row_dimensions[r_f2].height = 14.5
+        ws.row_dimensions[r_s1].height = 14.0
+        ws.row_dimensions[r_s2].height = 14.0
+        ws.row_dimensions[r_s3].height = 18.0
+        ws.row_dimensions[r_s4].height = 16.0
+        ws.row_dimensions[r_s5].height = 14.0
+        ws.row_dimensions[r_s6].height = 14.0
+        ws.row_dimensions[r_f1].height = 14.0
+        ws.row_dimensions[r_f2].height = 14.0
 
         ws.merge_cells(start_row=r_s1, start_column=2, end_row=r_s1, end_column=9)
         ws.merge_cells(start_row=r_s1, start_column=10, end_row=r_s1, end_column=11)
@@ -550,7 +550,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         cur_r = _write_top_banner(cur_r)
         data_start_r = _write_main_headers(cur_r)
 
-        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 14 slots per page)
+        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 16 slots per page)
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
             if slot_idx < len(page_rows):
@@ -561,11 +561,11 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             desc_str = str(desc or "")
             est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
             if est_lines == 1:
-                ws.row_dimensions[r].height = 19.0
+                ws.row_dimensions[r].height = 18.0
             elif est_lines == 2:
-                ws.row_dimensions[r].height = 25.0
+                ws.row_dimensions[r].height = 23.5
             else:
-                ws.row_dimensions[r].height = 32.0
+                ws.row_dimensions[r].height = 29.5
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -607,7 +607,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
 
         # 3. Main Total / Continuation Row
         main_tot_row = last_data_r + 1
-        ws.row_dimensions[main_tot_row].height = 20.0
+        ws.row_dimensions[main_tot_row].height = 18.0
 
         if is_last_page:
             ws.merge_cells(start_row=main_tot_row, start_column=2, end_row=main_tot_row, end_column=8)
@@ -661,11 +661,11 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             desc_str = str(desc or "")
             est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
             if est_lines == 1:
-                ws.row_dimensions[r].height = 19.0
+                ws.row_dimensions[r].height = 18.0
             elif est_lines == 2:
-                ws.row_dimensions[r].height = 25.0
+                ws.row_dimensions[r].height = 23.5
             else:
-                ws.row_dimensions[r].height = 32.0
+                ws.row_dimensions[r].height = 29.5
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -705,7 +705,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
 
         # 5. Recapitulation Total / Continuation Row
         recap_tot_row = recap_last_row + 1
-        ws.row_dimensions[recap_tot_row].height = 20.0
+        ws.row_dimensions[recap_tot_row].height = 18.0
         ws.merge_cells(start_row=recap_tot_row, start_column=2, end_row=recap_tot_row, end_column=4)
         ws.merge_cells(start_row=recap_tot_row, start_column=6, end_row=recap_tot_row, end_column=7)
 
@@ -756,12 +756,12 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 0
     ws.print_options.horizontalCentered = True
-    ws.page_margins.left = 0.2
-    ws.page_margins.right = 0.2
-    ws.page_margins.top = 0.25
-    ws.page_margins.bottom = 0.25
-    ws.page_margins.header = 0.15
-    ws.page_margins.footer = 0.15
+    ws.page_margins.left = 0.15
+    ws.page_margins.right = 0.15
+    ws.page_margins.top = 0.15
+    ws.page_margins.bottom = 0.15
+    ws.page_margins.header = 0.0
+    ws.page_margins.footer = 0.0
     ws.oddFooter.right.text = "&P of &N"
     ws.oddFooter.right.font = "Calibri"
     ws.oddFooter.right.size = 10
