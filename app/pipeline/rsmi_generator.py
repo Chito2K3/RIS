@@ -63,13 +63,13 @@ def classify_fund_cluster(stock_no):
     """
     Classifies a medicine/supply item into its designated Philippine Government Fund Cluster
     based on its official ARMMC Stock Number prefix:
-      - `RAF` (Regular Agency Fund / GAA / Fund 101): Begins with `DMR` or `PROD` (e.g. `PRODMR...`)
+      - `RAF` (Regular Agency Fund / GAA / Fund 101): Begins with `DMR`, `PROD` (e.g. `PRODMR...`), or `DMNP`
       - `IGF` (Internally Generated Fund / Income / Consignment / Fund 161): Begins with `DMEP`, `DMCSP`, `DMC`
       - `DON` (Donations / Trust / Grants / Fund 184): Begins with `DMDON`, `DMD`
     Non-standard / accountable forms (e.g. `AFS000001`) default to `IGF`.
     """
     s = re.sub(r'^[^\w]+', '', str(stock_no or "")).strip().upper()
-    if s.startswith("DMR") or s.startswith("PROD"):
+    if s.startswith("DMR") or s.startswith("PROD") or s.startswith("DMNP"):
         return "RAF"
     elif s.startswith("DMDON") or s.startswith("DMD"):
         return "DON"
@@ -784,7 +784,7 @@ def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summa
     ws_sum = out_wb.create_sheet(title=title)
     sum_headers = [
         "RIS No.", "Office / Ward",
-        "RAF Qty (DMR/PROD)", "IGF Qty (DMEP/DMC)", "DON Qty (DMD/DMDON)",
+        "RAF Qty (DMR/PROD/DMNP)", "IGF Qty (DMEP/DMC)", "DON Qty (DMD/DMDON)",
         "Item Count", "Total Quantity", "Source File"
     ]
     ws_sum.row_dimensions[1].height = 24
