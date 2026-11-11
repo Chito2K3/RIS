@@ -27,6 +27,7 @@ class RccLookup:
         self.full_to_rcc = {}
         self.norm_to_rcc = {}
         self.entries = []
+        self.fallback_wards = {}
         if self.rs_code_path and os.path.exists(self.rs_code_path):
             self.load_rs_code_file(self.rs_code_path)
 
@@ -77,6 +78,10 @@ class RccLookup:
         return self.short_to_rcc.get(short_code.upper(), fallback)
 
     def resolve_rcc(self, office_name):
+        rcc = self._resolve_rcc_internal(office_name, track_default=True)
+        return rcc
+
+    def _resolve_rcc_internal(self, office_name, track_default=False):
         if not office_name:
             return self._get_by_short("PHARMA")
 
@@ -285,4 +290,7 @@ class RccLookup:
             if fn and (fn in raw_u or raw_u in fn):
                 return rcc
 
-        return self._get_by_short("PHARMA")
+        default_rcc = self._get_by_short("PHARMA")
+        if track_default and raw_u and raw_u not in self.fallback_wards:
+            self.fallback_wards[raw_u] = {"office": str(office_name).strip(), "rcc": default_rcc}
+        return default_rcc

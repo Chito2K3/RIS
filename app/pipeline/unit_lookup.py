@@ -6,6 +6,7 @@ class UnitLookup:
     def __init__(self, masterlist_path=None):
         self.unit_map = {}
         self.desc_map = {}
+        self.fallback_items = {}
         if masterlist_path and os.path.exists(masterlist_path):
             self.load_masterlist(masterlist_path)
 
@@ -42,36 +43,49 @@ class UnitLookup:
         cd = self.clean_desc(desc_str)
         if cd in self.desc_map:
             return self.desc_map[cd]
+        unit, reason = self._resolve_heuristic(desc_str)
+        key = code_str or cd
+        if key and key not in self.fallback_items:
+            self.fallback_items[key] = {
+                "code": code_str,
+                "desc": desc_str,
+                "unit": unit,
+                "reason": reason,
+            }
+        return unit
+
+    @staticmethod
+    def _resolve_heuristic(desc_str):
         u_desc = desc_str.upper()
         if "PRESCRIPTION PAD" in u_desc or "PAD" in u_desc:
-            return "Pad"
+            return "Pad", "heuristic"
         if "PRE-FILLED SYRINGE" in u_desc or "PRE‐FILLED SYRINGE" in u_desc or "PREFILLED SYRINGE" in u_desc:
-            return "PFS"
+            return "PFS", "heuristic"
         if "BOTTLE/BAG" in u_desc:
-            return "Bottle/bag"
+            return "Bottle/bag", "heuristic"
         if "AMPULE/VIAL" in u_desc:
-            return "Ampule"
+            return "Ampule", "heuristic"
         if "TABLET/CAPSULE" in u_desc or "CAPSULE/TABLET" in u_desc:
-            return "Capsule/Tablet"
+            return "Capsule/Tablet", "heuristic"
         if "TABLET" in u_desc:
-            return "Tablet"
+            return "Tablet", "heuristic"
         if "CAPSULE" in u_desc:
-            return "Capsule"
+            return "Capsule", "heuristic"
         if "AMPULE" in u_desc:
-            return "Ampule"
+            return "Ampule", "heuristic"
         if "VIAL" in u_desc or "LYOPHILIZED POWDER" in u_desc or "IFOSFAMIDE" in u_desc or "METHYLPREDNISOLONE 500 MG IV" in u_desc:
-            return "Vial"
+            return "Vial", "heuristic"
         if "BOTTLE" in u_desc or "DROPS" in u_desc or "SYRUP" in u_desc or "SUSPENSION" in u_desc:
-            return "Bottle"
+            return "Bottle", "heuristic"
         if "TUBE" in u_desc or "OINTMENT" in u_desc or "CREAM" in u_desc or "GEL" in u_desc:
-            return "Tube"
+            return "Tube", "heuristic"
         if "NEBULE" in u_desc:
-            return "Nebule"
+            return "Nebule", "heuristic"
         if "SACHET" in u_desc:
-            return "Sachet"
+            return "Sachet", "heuristic"
         if "SUPPOSITORY" in u_desc or "DULCOLAX" in u_desc:
-            return "Suppository"
+            return "Suppository", "heuristic"
         if "1CC" in u_desc or "0.2CC" in u_desc or " CC" in u_desc:
-            return "cc"
-        return "Piece"
+            return "cc", "heuristic"
+        return "Piece", "default_piece"
 

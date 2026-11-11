@@ -5,6 +5,7 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.worksheet.pagebreak import Break
 from .rcc_lookup import RccLookup
+from .utils import safe_save_workbook
 
 RSMI_ITEMS_PER_PAGE = 16
 RSMI_TARGET_PAGE_HEIGHT_PT = 1115.0
@@ -124,6 +125,12 @@ FUND_CLUSTERS = [
         "file_suffix": "DON",
     },
 ]
+
+KNOWN_FUND_PREFIXES = ("DMR", "PROD", "DMNP", "DMDON", "DMD", "DMEP", "DMCSP", "DMC")
+
+def is_known_fund_prefix(stock_no):
+    s = re.sub(r'^[^\w]+', '', str(stock_no or "")).strip().upper()
+    return any(s.startswith(pfx) for pfx in KNOWN_FUND_PREFIXES)
 
 def classify_fund_cluster(stock_no):
     """
@@ -1001,10 +1008,16 @@ def _write_rsmi_workbook(
     """
     # 1. Segregate rows by Fund Cluster
     cluster_buckets = {"RAF": [], "IGF": [], "DON": []}
+    unassigned_seen = {}
     for row in rsmi_rows:
         stock_no = row[2]
         fc = classify_fund_cluster(stock_no)
         cluster_buckets[fc].append(row)
+        sn_clean = str(stock_no or "").strip()
+        if sn_clean and not is_known_fund_prefix(sn_clean) and sn_clean not in unassigned_seen:
+            unassigned_seen[sn_clean] = {"stock_no": sn_clean, "assigned_fund": fc}
+
+    locked_files = []
 
     # 2. Build Consolidated Workbook
     out_wb = openpyxl.Workbook()
@@ -1029,15 +1042,9 @@ def _write_rsmi_workbook(
 
     _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary")
 
-    try:
-        out_wb.save(output_xlsx)
-    except PermissionError:
-        pass
+    safe_save_workbook(out_wb, output_xlsx, locked_files=locked_files)
     if output_xls:
-        try:
-            out_wb.save(output_xls)
-        except PermissionError:
-            pass
+        safe_save_workbook(out_wb, output_xls, locked_files=locked_files)
     out_wb.close()
 
     # 3. Build Standalone Workbooks per Fund Cluster
@@ -1066,15 +1073,9 @@ def _write_rsmi_workbook(
         )
         _write_summary_sheet(s_wb, summary_rows, rows_in_cluster, title="RIS Count Summary")
 
-        try:
-            s_wb.save(single_xlsx_path)
-        except PermissionError:
-            pass
+        safe_save_workbook(s_wb, single_xlsx_path, locked_files=locked_files)
         if single_xls_path:
-            try:
-                s_wb.save(single_xls_path)
-            except PermissionError:
-                pass
+            safe_save_workbook(s_wb, single_xls_path, locked_files=locked_files)
         s_wb.close()
 
         c_qty = sum(int(float(r[5])) for r in rows_in_cluster)
@@ -1092,6 +1093,8 @@ def _write_rsmi_workbook(
     return {
         "grand_qty": grand_qty,
         "fund_files": fund_files,
+        "locked_files": locked_files,
+        "unassigned_prefixes": list(unassigned_seen.values()),
         "breakdown": {
             "RAF": {"items": len(cluster_buckets["RAF"]), "qty": fund_files["RAF"]["total_qty"]},
             "IGF": {"items": len(cluster_buckets["IGF"]), "qty": fund_files["IGF"]["total_qty"]},
@@ -1168,6 +1171,27 @@ def generate_populated_rsmi(
         "total_qty": total_qty,
         "fund_files": write_res["fund_files"],
         "breakdown": write_res["breakdown"],
+        "locked_files": write_res["locked_files"],
+        "unassigned_prefixes": write_res["unassigned_prefixes"],
+    }
+
+def _summarize_ward_file_rows(fname, rows):
+    raf_qty = 0
+    igf_qty = 0
+    don_qty = 0
+    for r in rows:
+        fc = classify_fund_cluster(r[2])
+        q = int(float(r[5]))
+        if fc == "RAF":
+            raf_qty += q
+        elif fc == "DON":
+            don_qty += q
+        else:
+            igf_qty += q
+    return {
+        "raf_qty": raf_qty,
+        "igf_qty": igf_qty,
+        "don_qty": don_qty,
     }
 
 def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=None, custodian_name=None):
@@ -1184,22 +1208,26 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
     excluded_set = set(excluded_files or [])
 
     meta_path = os.path.join(final_dir, "_rsmi_meta.json")
-    if custodian_name:
-        try:
-            import json
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump({"custodian_name": custodian_name}, f)
-        except Exception:
-            pass
-    elif os.path.exists(meta_path):
+    existing_meta = {}
+    if os.path.exists(meta_path):
         try:
             import json
             with open(meta_path, "r", encoding="utf-8") as f:
-                custodian_name = json.load(f).get("custodian_name", DEFAULT_CUSTODIAN)
+                existing_meta = json.load(f) or {}
         except Exception:
-            custodian_name = DEFAULT_CUSTODIAN
-    else:
-        custodian_name = DEFAULT_CUSTODIAN
+            existing_meta = {}
+
+    if not custodian_name:
+        custodian_name = existing_meta.get("custodian_name") or DEFAULT_CUSTODIAN
+    if not master_filename:
+        master_filename = existing_meta.get("master_filename")
+
+    try:
+        import json
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump({"custodian_name": custodian_name, "master_filename": master_filename}, f)
+    except Exception:
+        pass
 
     all_files = sorted([
         f for f in os.listdir(final_dir)
@@ -1217,12 +1245,14 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
         fpath = os.path.join(final_dir, fname)
         office, ris_no, rcc_code, rows, item_count, total_qty = _read_ris_file_items(fpath)
         rsmi_rows.extend(rows)
+        fc_totals = _summarize_ward_file_rows(fname, rows)
         summary_rows.append({
             "ris_no": ris_no,
             "office": office,
             "item_count": item_count,
             "total_qty": total_qty,
             "filename": fname,
+            **fc_totals,
         })
 
     write_res = _write_rsmi_workbook(
@@ -1242,5 +1272,172 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
         "grand_total_qty": write_res["grand_qty"],
         "fund_files": write_res["fund_files"],
         "breakdown": write_res["breakdown"],
+        "locked_files": write_res["locked_files"],
+        "unassigned_prefixes": write_res["unassigned_prefixes"],
+        "custodian_name": custodian_name,
         "summary_rows": summary_rows,
+    }
+
+def inspect_existing_output_folder(final_dir):
+    """
+    Loads an existing `02_RIS_FINAL` directory cleanly without regenerating or modifying
+    existing workbooks on disk, returning the full dashboard payload (`consumption`, `issuance`, `rsmi`).
+    """
+    import json
+    if not final_dir or not os.path.isdir(final_dir):
+        raise FileNotFoundError(f"Output directory not found: {final_dir}")
+
+    meta_path = os.path.join(final_dir, "_rsmi_meta.json")
+    excl_path = os.path.join(final_dir, "_rsmi_excluded.json")
+    meta = {}
+    excluded_list = []
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f) or {}
+        except Exception:
+            meta = {}
+    if os.path.exists(excl_path):
+        try:
+            with open(excl_path, "r", encoding="utf-8") as f:
+                excluded_list = json.load(f) or []
+        except Exception:
+            excluded_list = []
+
+    excluded_set = set(excluded_list)
+    master_filename = meta.get("master_filename")
+    if not master_filename:
+        for f in sorted(os.listdir(final_dir)):
+            if "POPULATED" in f.upper() and f.lower().endswith(".xlsx") and not f.startswith("~$") and not f.upper().startswith("RSMI"):
+                master_filename = f
+                break
+
+    populated_rsmi_info = None
+    master_item_count = 0
+    master_total_qty = 0
+    if master_filename and os.path.exists(os.path.join(final_dir, master_filename)):
+        m_path = os.path.join(final_dir, master_filename)
+        m_office, m_ris_no, _, m_rows, master_item_count, master_total_qty = _read_ris_file_items(m_path)
+        m_match = re.search(r'RIS\s*-\s*([A-Z]+)_(\d{4})_POPULATED', master_filename, re.IGNORECASE)
+        m_upper = m_match.group(1).upper() if m_match else "OCTOBER"
+        y_str = m_match.group(2) if m_match else "2026"
+        base_prefix = f"RSMI-{m_upper}_{y_str}-Populated"
+        if os.path.exists(os.path.join(final_dir, f"{base_prefix}.xlsx")):
+            pop_buckets = {"RAF": [0, 0], "IGF": [0, 0], "DON": [0, 0]}
+            for r in m_rows:
+                fc = classify_fund_cluster(r[2])
+                pop_buckets[fc][0] += 1
+                pop_buckets[fc][1] += int(float(r[5]))
+            fund_files = {}
+            for fc_code in ("RAF", "IGF", "DON"):
+                fund_files[fc_code] = {
+                    "xlsx": f"{base_prefix} - {fc_code}.xlsx",
+                    "xls": f"{base_prefix} - {fc_code}.xls",
+                    "item_count": pop_buckets[fc_code][0],
+                    "total_qty": pop_buckets[fc_code][1],
+                }
+            populated_rsmi_info = {
+                "filename": f"{base_prefix}.xlsx",
+                "xls_filename": f"{base_prefix}.xls",
+                "source_ris_file": master_filename,
+                "ris_no": m_ris_no,
+                "office": m_office,
+                "item_count": master_item_count,
+                "total_qty": master_total_qty,
+                "fund_files": fund_files,
+                "breakdown": {k: {"items": v[0], "qty": v[1]} for k, v in pop_buckets.items()},
+            }
+
+    all_files = sorted([
+        f for f in os.listdir(final_dir)
+        if os.path.isfile(os.path.join(final_dir, f))
+        and f.lower().endswith(".xlsx")
+        and not f.startswith("~$")
+        and not is_rsmi_or_master_file(f, master_filename)
+        and f not in excluded_set
+    ])
+
+    summary_rows = []
+    rsmi_rows = []
+    ward_buckets = {"RAF": [0, 0], "IGF": [0, 0], "DON": [0, 0]}
+    unassigned_seen = {}
+
+    for fname in all_files:
+        fpath = os.path.join(final_dir, fname)
+        office, ris_no, rcc_code, rows, item_count, total_qty = _read_ris_file_items(fpath)
+        rsmi_rows.extend(rows)
+        for r in rows:
+            fc = classify_fund_cluster(r[2])
+            ward_buckets[fc][0] += 1
+            ward_buckets[fc][1] += int(float(r[5]))
+            sn = str(r[2] or "").strip()
+            if sn and not is_known_fund_prefix(sn) and sn not in unassigned_seen:
+                unassigned_seen[sn] = {"stock_no": sn, "assigned_fund": fc}
+        fc_totals = _summarize_ward_file_rows(fname, rows)
+        summary_rows.append({
+            "ris_no": ris_no,
+            "office": office,
+            "item_count": item_count,
+            "total_qty": total_qty,
+            "filename": fname,
+            **fc_totals,
+        })
+
+    ward_fund_files = {
+        fc: {
+            "xlsx": f"RSMI - {fc}.xlsx",
+            "xls": f"RSMI - {fc}.xls",
+            "item_count": ward_buckets[fc][0],
+            "total_qty": ward_buckets[fc][1],
+        }
+        for fc in ("RAF", "IGF", "DON")
+    }
+
+    output_base_dir = os.path.dirname(final_dir)
+    cleaned_dir = os.path.join(output_base_dir, "01_CLEANED_DATA")
+    pdf_dir = os.path.join(output_base_dir, "03_PRINT_PDF")
+    existing_pdfs = []
+    if os.path.isdir(pdf_dir):
+        existing_pdfs = sorted([
+            f for f in os.listdir(pdf_dir)
+            if f.lower().endswith(".pdf") and os.path.isfile(os.path.join(pdf_dir, f))
+        ])
+
+    return {
+        "output_base_dir": output_base_dir,
+        "cleaned_dir": cleaned_dir if os.path.isdir(cleaned_dir) else final_dir,
+        "final_dir": final_dir,
+        "pdf_dir": pdf_dir if existing_pdfs else "",
+        "existing_pdfs": existing_pdfs,
+        "excluded_files": sorted(excluded_set),
+        "consumption": {
+            "master_ris_filename": master_filename,
+            "populated_rsmi": populated_rsmi_info,
+            "item_count": master_item_count,
+            "total_qty": master_total_qty,
+        },
+        "issuance": {
+            "ward_count": len(summary_rows),
+            "total_ward_items": len(rsmi_rows),
+            "total_qty": sum(r["total_qty"] for r in summary_rows),
+        },
+        "rsmi": {
+            "rsmi_path": os.path.join(final_dir, "RSMI.xlsx"),
+            "rsmi_xls_path": os.path.join(final_dir, "RSMI.xls"),
+            "total_ris_files": len(summary_rows),
+            "total_medicine_rows": len(rsmi_rows),
+            "grand_total_qty": sum(v[1] for v in ward_buckets.values()),
+            "fund_files": ward_fund_files,
+            "breakdown": {k: {"items": v[0], "qty": v[1]} for k, v in ward_buckets.items()},
+            "locked_files": [],
+            "unassigned_prefixes": list(unassigned_seen.values()),
+            "custodian_name": meta.get("custodian_name", DEFAULT_CUSTODIAN),
+            "summary_rows": summary_rows,
+        },
+        "audit": {
+            "locked_files": [],
+            "unit_fallbacks": [],
+            "rcc_fallbacks": [],
+            "unassigned_prefixes": list(unassigned_seen.values()),
+        },
     }

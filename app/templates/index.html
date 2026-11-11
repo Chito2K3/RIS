@@ -3,35 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARMMC Pharmacy — RIS & RSMI Automation App</title>
+  <title>ARMMC Pharmacy — RIS &amp; RSMI Automation</title>
   <style>
     :root {
-      --primary: #1e40af;
-      --primary-hover: #1d4ed8;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --surface-subtle: #f8fafc;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text: #0f172a;
+      --text-secondary: #334155;
+      --muted: #64748b;
+
+      --navy-950: #0b132b;
+      --navy-900: #111d3f;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --primary-soft: #eff6ff;
+      --primary-border: #bfdbfe;
+
       --accent: #059669;
       --accent-hover: #047857;
-      --bg: #f1f5f9;
-      --card: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #cbd5e1;
+      --accent-soft: #ecfdf5;
+      --accent-border: #a7f3d0;
+
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --danger-soft: #fef2f2;
+      --danger-border: #fecaca;
+
+      --amber: #d97706;
+      --amber-soft: #fffbeb;
+      --amber-border: #fde68a;
+
+      --raf-fg: #3730a3;
+      --raf-bg: #eef2ff;
+      --raf-bd: #c7d2fe;
+
+      --igf-fg: #065f46;
+      --igf-bg: #ecfdf5;
+      --igf-bd: #a7f3d0;
+
+      --don-fg: #6d28d9;
+      --don-bg: #f5f3ff;
+      --don-bd: #ddd6fe;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 10px 26px rgba(15, 23, 42, 0.08);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      padding-bottom: 60px;
+      padding-bottom: 64px;
+      -webkit-font-smoothing: antialiased;
     }
-    header {
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+
+    .tabular { font-variant-numeric: tabular-nums; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.84em;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+
+    /* Header */
+    .topbar {
+      background: linear-gradient(135deg, #0b132b 0%, #172554 55%, #1e3a8a 100%);
       color: #fff;
-      padding: 24px 32px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      padding: 20px 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 4px 18px rgba(11, 19, 43, 0.18);
     }
-    header .header-inner {
-      max-width: 1200px;
+    .topbar-inner {
+      max-width: 1280px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -39,305 +93,434 @@
       flex-wrap: wrap;
       gap: 16px;
     }
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
-    header p {
-      color: #93c5fd;
-      font-size: 0.92rem;
-      margin-top: 4px;
-    }
-    .badge {
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.25);
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 600;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 28px auto;
-      padding: 0 20px;
-    }
-    .pipeline-steps {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      margin-bottom: 24px;
-    }
-    .step-pill {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-left: 4px solid var(--primary);
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    .step-pill .step-num {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--primary);
-    }
-    .step-pill .step-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin-top: 2px;
-    }
-    .step-pill .step-desc {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1.25fr 0.75fr;
-      gap: 22px;
-    }
-    @media (max-width: 900px) {
-      .pipeline-steps, .grid-2 { grid-template-columns: 1fr; }
-    }
-    .card {
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      padding: 24px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-      margin-bottom: 22px;
-    }
-    .card h2 {
-      font-size: 1.15rem;
-      margin-bottom: 16px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #e2e8f0;
+    .brand {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 14px;
     }
-    .upload-zone {
-      border: 2px dashed #94a3b8;
-      border-radius: 10px;
-      padding: 18px;
-      background: #f8fafc;
-      margin-bottom: 16px;
-      transition: all 0.2s;
-    }
-    .upload-zone:hover {
-      border-color: var(--primary);
-      background: #eff6ff;
-    }
-    .upload-zone label {
-      display: block;
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 4px;
-      color: #1e293b;
-    }
-    .upload-zone .hint {
-      font-size: 0.82rem;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-    .upload-zone input[type="file"] {
-      width: 100%;
-      font-size: 0.88rem;
-    }
-    .form-group {
-      margin-bottom: 14px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 0.84rem;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 4px;
-    }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 0.92rem;
-    }
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .btn-row {
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 18px;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
-    button {
-      cursor: pointer;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 20px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      transition: all 0.15s;
+    .brand h1 {
+      font-size: 1.32rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+    }
+    .brand p {
+      color: #bfdbfe;
+      font-size: 0.86rem;
+      margin-top: 2px;
+    }
+    .topbar-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .header-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #f8fafc;
     }
-    .btn-primary {
-      background: var(--primary);
-      color: white;
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.22);
     }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-accent {
-      background: var(--accent);
-      color: white;
+    .dot.busy {
+      background: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.28);
     }
-    .btn-accent:hover { background: var(--accent-hover); }
-    .btn-outline {
-      background: white;
-      color: #1e293b;
+
+    .container {
+      max-width: 1280px;
+      margin: 22px auto 0;
+      padding: 0 20px;
+    }
+
+    /* Quick Load Past Run Bar */
+    .quickbar {
+      background: var(--surface);
       border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: var(--shadow-xs);
     }
-    .btn-outline:hover { background: #f1f5f9; }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    .quickbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
     }
-    #statusBanner {
-      display: none;
-      padding: 16px 20px;
-      border-radius: 10px;
-      margin-bottom: 22px;
-      font-weight: 500;
+    .quickbar select {
+      padding: 7px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-size: 0.86rem;
+      background: var(--surface-subtle);
+      color: var(--text);
+      min-width: 240px;
     }
-    .status-loading {
-      background: #dbeafe;
-      color: #1e40af;
-      border: 1px solid #93c5fd;
-    }
-    .status-success {
-      background: #d1fae5;
-      color: #065f46;
-      border: 1px solid #6ee7b7;
-    }
-    .status-error {
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fca5a5;
-    }
-    #resultsSection { display: none; }
-    .stats-grid {
+
+    /* 4-Step Pipeline Stepper */
+    .stepper {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      margin-bottom: 22px;
+      gap: 12px;
+      margin-bottom: 20px;
     }
-    .stat-box {
-      background: #f8fafc;
+    .step-card {
+      background: var(--surface);
       border: 1px solid var(--border);
-      padding: 16px;
-      border-radius: 10px;
-      text-align: center;
+      border-radius: var(--radius-md);
+      padding: 13px 15px;
+      box-shadow: var(--shadow-xs);
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
     }
-    .stat-box .num {
-      font-size: 1.65rem;
-      font-weight: 700;
+    .step-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--primary-soft);
       color: var(--primary);
-    }
-    .stat-box .lbl {
+      border: 1px solid var(--primary-border);
+      font-weight: 700;
       font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .step-desc {
+      font-size: 0.78rem;
       color: var(--muted);
-      margin-top: 4px;
+      margin-top: 2px;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.88rem;
+
+    /* Grid Layout */
+    .grid-main {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 20px;
+      align-items: start;
     }
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e2e8f0;
-      text-align: left;
+    @media (max-width: 980px) {
+      .stepper { grid-template-columns: repeat(2, 1fr); }
+      .grid-main { grid-template-columns: 1fr; }
     }
-    th {
-      background: #f1f5f9;
-      font-weight: 600;
-      color: #334155;
-      position: sticky;
-      top: 0;
+    @media (max-width: 600px) {
+      .stepper { grid-template-columns: 1fr; }
     }
-    td.num-col, th.num-col { text-align: right; }
-    .table-scroll {
-      max-height: 420px;
-      overflow-y: auto;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
     }
-    .folder-box {
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
+    .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
+      gap: 10px;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-title {
+      font-size: 1.06rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 14px 0 8px;
+    }
+    .section-label:first-of-type { margin-top: 0; }
+
+    /* Drag & Drop Upload Tiles */
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
-    .folder-path {
-      font-family: Consolas, monospace;
-      font-size: 0.86rem;
-      color: #0f172a;
+    @media (max-width: 680px) {
+      .upload-grid { grid-template-columns: 1fr; }
+    }
+    .dropzone {
+      position: relative;
+      border: 1.5px dashed var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface-subtle);
+      padding: 14px;
+      transition: border-color 0.16s, background 0.16s, box-shadow 0.16s;
+      cursor: pointer;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.08);
+    }
+    .dropzone.has-file {
+      border-style: solid;
+      border-color: var(--accent-border);
+      background: #f6fef9;
+    }
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .dz-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .dz-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .dz-title {
+      font-size: 0.87rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .dz-sub {
+      font-size: 0.77rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .dz-pill {
+      margin-top: 10px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.79rem;
+      position: relative;
+      z-index: 2;
+    }
+    .dropzone.has-file .dz-pill { display: flex; }
+    .dz-fname {
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 210px;
+    }
+    .dz-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .dz-clear {
+      border: none;
       background: #e2e8f0;
-      padding: 4px 8px;
-      border-radius: 4px;
-    }
-    /* Spinner & Progress Bar Animations */
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    @keyframes shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2.5px solid rgba(255,255,255,0.35);
-      border-top-color: #ffffff;
+      color: #334155;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-      vertical-align: middle;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .dz-clear:hover { background: #cbd5e1; color: #0f172a; }
+
+    /* Form Controls */
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-group { margin-bottom: 12px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+    .check-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    button, .btn {
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 9px 15px;
+      font-size: 0.87rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-family: inherit;
+    }
+    .btn-lg { padding: 11px 18px; font-size: 0.92rem; }
+    .btn-sm { padding: 6px 11px; font-size: 0.8rem; }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 1px 2px rgba(29,78,216,0.22); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-accent { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(5,150,105,0.22); }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-outline { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+    .btn-outline:hover { background: var(--surface-subtle); border-color: #94a3b8; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* Alerts / Banners */
+    .alert {
+      display: none;
+      padding: 13px 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .alert.show { display: flex; }
+    .alert-info { background: var(--primary-soft); color: #1e3a8a; border-color: var(--primary-border); }
+    .alert-success { background: var(--accent-soft); color: #065f46; border-color: var(--accent-border); }
+    .alert-warn { background: var(--amber-soft); color: #92400e; border-color: var(--amber-border); }
+    .alert-error { background: var(--danger-soft); color: #991b1b; border-color: var(--danger-border); }
+
+    /* Live Progress Panel */
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      flex-shrink: 0;
     }
     .spinner-dark {
-      border: 2.5px solid rgba(30,64,175,0.25);
-      border-top-color: #1e40af;
+      border-color: rgba(29, 78, 216, 0.2);
+      border-top-color: var(--primary);
     }
     #progressContainer {
       display: none;
-      background: #ffffff;
-      border: 2px solid #3b82f6;
-      border-radius: 12px;
-      padding: 20px 24px;
-      margin-bottom: 22px;
-      box-shadow: 0 8px 24px rgba(30, 64, 175, 0.12);
+      background: var(--surface);
+      border: 1.5px solid var(--primary-border);
+      border-radius: var(--radius-lg);
+      padding: 18px 22px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-md);
     }
     .progress-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
       margin-bottom: 10px;
       font-weight: 600;
+      font-size: 0.92rem;
       color: #1e3a8a;
     }
     .progress-track {
       width: 100%;
-      height: 14px;
+      height: 11px;
       background: #e2e8f0;
       border-radius: 999px;
       overflow: hidden;
@@ -346,201 +529,485 @@
     .progress-fill {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #1e40af, #3b82f6, #059669, #1e40af);
+      background: linear-gradient(90deg, #1d4ed8, #3b82f6, #059669, #1d4ed8);
       background-size: 200% 100%;
       animation: shimmer 2s linear infinite;
       border-radius: 999px;
-      transition: width 0.4s ease;
+      transition: width 0.28s ease;
     }
-    .progress-stage-list {
+    .progress-stages {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .progress-stage-item.active { color: var(--primary); font-weight: 700; }
+    .progress-stage-item.done { color: var(--accent); font-weight: 600; }
+
+    /* Results & Stats */
+    #resultsSection { display: none; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 820px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-card {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--primary);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+    .stat-card.emerald { border-top-color: var(--accent); }
+    .stat-card.indigo { border-top-color: #4f46e5; }
+    .stat-card.violet { border-top-color: #7c3aed; }
+    .stat-card .num {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .stat-card .lbl {
+      font-size: 0.79rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Audit Card */
+    .audit-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-subtle);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .audit-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 10px;
-      font-size: 0.8rem;
-      color: #64748b;
+      font-size: 0.85rem;
     }
-    .progress-stage-item.active {
-      color: #1e40af;
+    .audit-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.77rem;
       font-weight: 700;
+      border: 1px solid transparent;
     }
-    .progress-stage-item.done {
-      color: #059669;
-      font-weight: 600;
+    .chip-ok { background: var(--accent-soft); color: var(--igf-fg); border-color: var(--accent-border); }
+    .chip-warn { background: var(--amber-soft); color: #92400e; border-color: var(--amber-border); }
+    .chip-danger { background: var(--danger-soft); color: #991b1b; border-color: var(--danger-border); }
+    .audit-details {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-strong);
+      font-size: 0.81rem;
+      color: var(--text-secondary);
+      max-height: 220px;
+      overflow-y: auto;
     }
-    /* RSMI Exclusion Toolbar & Row Styles */
-    .rsmi-toolbar {
+    .audit-details.open { display: block; }
+
+    /* Folder & Deliverables Panels */
+    .folder-row {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 13px 16px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      padding: 12px 16px;
+    }
+    .fund-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    @media (max-width: 820px) {
+      .fund-grid { grid-template-columns: 1fr; }
+    }
+    .fund-card {
+      border-radius: var(--radius-md);
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .fund-card.raf { background: var(--raf-bg); border-color: var(--raf-bd); }
+    .fund-card.igf { background: var(--igf-bg); border-color: var(--igf-bd); }
+    .fund-card.don { background: var(--don-bg); border-color: var(--don-bd); }
+    .fund-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .fund-tag {
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+    }
+    .fund-card.raf .fund-tag { color: var(--raf-fg); }
+    .fund-card.igf .fund-tag { color: var(--igf-fg); }
+    .fund-card.don .fund-tag { color: var(--don-fg); }
+    .fund-pfx { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+    .fund-stat { font-size: 0.83rem; font-weight: 700; color: var(--text); }
+
+    /* PDF Batch Panel */
+    .pdf-panel {
+      background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+      border: 1px solid var(--primary-border);
+      border-radius: var(--radius-md);
+      padding: 15px 16px;
+      margin-top: 14px;
+    }
+    .pdf-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .pdf-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #fff;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .pdf-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Table Toolbar & Table */
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
       margin-bottom: 12px;
     }
+    .search-box {
+      padding: 7px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      min-width: 240px;
+      background: var(--surface);
+    }
     .excl-badge {
-      background: #fee2e2;
+      background: var(--danger-soft);
       color: #991b1b;
-      border: 1px solid #fca5a5;
-      padding: 5px 12px;
+      border: 1px solid var(--danger-border);
+      padding: 5px 11px;
       border-radius: 999px;
-      font-size: 0.84rem;
-      font-weight: 600;
+      font-size: 0.8rem;
+      font-weight: 700;
     }
     .excl-badge.zero {
       background: #e2e8f0;
       color: #475569;
-      border-color: #cbd5e1;
+      border-color: var(--border-strong);
     }
-    tr.row-excluded {
-      background: #fff1f2 !important;
-      color: #9f1239;
+    .table-scroll {
+      max-height: 450px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
     }
-    tr.row-excluded td {
-      text-decoration: line-through;
-      opacity: 0.78;
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td {
+      padding: 9px 11px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
     }
-    tr.row-excluded td.chk-cell {
-      text-decoration: none;
-      opacity: 1;
+    th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: var(--text-secondary);
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
-    .chk-input {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-      accent-color: #dc2626;
-    }
-    .btn-danger-proceed {
-      background: #dc2626;
-      color: #ffffff;
-    }
-    .btn-danger-proceed:hover {
-      background: #b91c1c;
-    }
+    tbody tr:hover { background: #f8fafc; }
+    td.num-col, th.num-col { text-align: right; }
+    tr.row-excluded { background: #fff1f2 !important; color: #9f1239; }
+    tr.row-excluded td { text-decoration: line-through; opacity: 0.78; }
+    tr.row-excluded td.chk-cell { text-decoration: none; opacity: 1; }
+    .chk-input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--danger); }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="header-inner">
-      <div>
-        <h1>ARMMC Pharmacy — RIS &amp; RSMI Automation App</h1>
-        <p>Amang Rodriguez Memorial Medical Center • Allied Division / Pharmacy</p>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <div>
+          <h1>ARMMC Pharmacy — RIS &amp; RSMI Automation</h1>
+          <p>Amang Rodriguez Memorial Medical Center &bull; Allied Division / Pharmacy</p>
+        </div>
       </div>
-      <div class="badge">RCC: 13 001 14 00012 03 02 33</div>
+      <div class="topbar-meta">
+        <span class="header-pill">
+          <span class="dot" id="serverStatusDot"></span>
+          <span id="serverStatusText">Ready</span>
+        </span>
+        <span class="header-pill tabular">RCC: 13-001-14-00012-03-02-33</span>
+      </div>
     </div>
   </header>
 
-  <div class="container">
-    <!-- 4-Step Pipeline Overview -->
-    <div class="pipeline-steps">
-      <div class="step-pill">
-        <div class="step-num">Step 1 • Clean &amp; Combine</div>
-        <div class="step-title">Unmerge &amp; Combine into 1 Clean File</div>
-        <div class="step-desc">Cleans the 2 Consumption files &rarr; <code>CONSUMPTION_COMBINED_CLEANED.xlsx</code> in <code>01_CLEANED_DATA/</code></div>
+  <main class="container">
+    <!-- Load Existing Output Folder Quickbar -->
+    <div class="quickbar" id="existingOutputsBar">
+      <div class="quickbar-left">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <strong>Revisit Generated Month:</strong>
+        <select id="existingOutputSelect">
+          <option value="">Checking existing output folders...</option>
+        </select>
+        <button type="button" class="btn-outline btn-sm" id="btnLoadExisting" onclick="loadExistingOutput(this)">
+          Load Selected Folder
+        </button>
       </div>
-      <div class="step-pill">
-        <div class="step-num">Step 2 • Master RIS</div>
-        <div class="step-title">RIS - POPULATED.xlsx</div>
-        <div class="step-desc">Processes Consumption + Masterlist Units into Master Pharmacy RIS</div>
-      </div>
-      <div class="step-pill">
-        <div class="step-num">Step 3 • Per-Ward RIS</div>
-        <div class="step-title">All Ward RIS Slips</div>
-        <div class="step-desc">Processes Issuance into individual Ward RIS files (e.g. PEDIA WARD)</div>
-      </div>
-      <div class="step-pill">
-        <div class="step-num">Step 4 • Finale</div>
-        <div class="step-title">Consolidated RSMI.xlsx</div>
-        <div class="step-desc">Compiles RSI No:, Stock No., Unit, Description, Quantity &amp; Item Counts</div>
-      </div>
+      <span style="font-size:0.78rem; color:var(--muted);" id="masterlistDetectedNote">Detecting default masterlist...</span>
     </div>
 
-    <div id="statusBanner"></div>
+    <!-- 4-Step Stepper -->
+    <section class="stepper" aria-label="Pipeline Stages">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Clean &amp; Combine</div>
+          <div class="step-desc">Unmerges raw HIS files into <code>01_CLEANED_DATA/</code></div>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Master Populated RIS</div>
+          <div class="step-desc">Maps Masterlist units &amp; formats A4 Portrait pages</div>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Per-Ward RIS Slips</div>
+          <div class="step-desc">Generates individual Ward RIS slips with RCCs</div>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">Segregated RSMIs</div>
+          <div class="step-desc">Outputs RAF, IGF &amp; DON in <code>.xlsx</code>, <code>.xls</code> &amp; <code>.pdf</code></div>
+        </div>
+      </div>
+    </section>
 
-    <!-- Animated Progress Bar Container -->
+    <!-- Status & Warning Banners -->
+    <div id="statusBanner" class="alert" role="status"></div>
+    <div id="lockedFilesBanner" class="alert alert-warn" role="alert"></div>
+
+    <!-- Real Backend Progress Panel -->
     <div id="progressContainer">
       <div class="progress-header">
         <div style="display:flex; align-items:center; gap:10px;">
           <span class="spinner spinner-dark"></span>
           <span id="progressText">Initializing pipeline...</span>
         </div>
-        <span id="progressPercent">0%</span>
+        <span id="progressPercent" class="tabular">0%</span>
       </div>
       <div class="progress-track">
         <div class="progress-fill" id="progressBarFill"></div>
       </div>
-      <div class="progress-stage-list">
-        <div class="progress-stage-item" id="pStage1">1. Clean &amp; Combine Files</div>
+      <div class="progress-stages">
+        <div class="progress-stage-item" id="pStage1">1. Clean &amp; Combine</div>
         <div class="progress-stage-item" id="pStage2">2. Master Populated RIS</div>
         <div class="progress-stage-item" id="pStage3">3. Per-Ward RIS Slips</div>
-        <div class="progress-stage-item" id="pStage4">4. Compile RSMI.xlsx</div>
+        <div class="progress-stage-item" id="pStage4">4. Compile &amp; Export</div>
       </div>
     </div>
 
     <form id="pipelineForm">
-      <div class="grid-2">
-        <!-- Left Column: File Uploads -->
+      <div class="grid-main">
+        <!-- Left Card: Raw File Uploads -->
         <div class="card">
-          <h2>1. Select Raw Downloaded HIS Files</h2>
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              1. Raw Downloaded HIS Files
+            </div>
+            <span style="font-size:0.78rem; color:var(--muted);">Drag &amp; drop or click any card</span>
+          </div>
 
-          <div class="upload-zone">
-            <label>A. Raw Consumption Report Files (2 Files &rarr; Combined into 1 Clean File &rarr; Master Populated RIS)</label>
-            <div class="hint">
-              Upload both files below so they are cleaned of merged/empty cells, combined into <code>CONSUMPTION_COMBINED_CLEANED.xlsx</code> in <code>01_CLEANED_DATA/</code>, and processed into <code>RIS - OCTOBER_2026_POPULATED.xlsx</code>:
+          <div class="section-label">A. Consumption Reports &rarr; Master Populated RIS &amp; Populated RSMI</div>
+          <div class="upload-grid">
+            <div class="dropzone" data-input="fileCons1">
+              <input type="file" id="fileCons1" name="consumption_files" accept=".xls,.xlsx,.csv" />
+              <div class="dz-top">
+                <div class="dz-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div>
+                  <div class="dz-title">Ancillary / Regular Consumption</div>
+                  <div class="dz-sub">e.g. CONSUMP_ANCILLIARY_OCT_2026.xls</div>
+                </div>
+              </div>
+              <div class="dz-pill">
+                <span class="dz-fname"></span>
+                <span class="dz-meta"><span class="dz-size"></span><button type="button" class="dz-clear" title="Remove file">&times;</button></span>
+              </div>
             </div>
-            <div style="margin-bottom:8px;">
-              <strong style="font-size:0.84rem; color:#1e40af;">File 1 — Ancillary / Regular Consumption (e.g. <code>CONSUMP_ANCILLIARY_OCT_2026.xls</code>):</strong>
-              <input type="file" name="consumption_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
-            </div>
-            <div>
-              <strong style="font-size:0.84rem; color:#1e40af;">File 2 — Consignment Consumption (e.g. <code>CONS_CONSUMP_OCT_2026_ORIGINAL_BACKUP.xls</code>):</strong>
-              <input type="file" name="consumption_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
+
+            <div class="dropzone" data-input="fileCons2">
+              <input type="file" id="fileCons2" name="consumption_files" accept=".xls,.xlsx,.csv" />
+              <div class="dz-top">
+                <div class="dz-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div>
+                  <div class="dz-title">Consignment Consumption</div>
+                  <div class="dz-sub">e.g. CONS_CONSUMP_OCT_2026.xls/.xlsx</div>
+                </div>
+              </div>
+              <div class="dz-pill">
+                <span class="dz-fname"></span>
+                <span class="dz-meta"><span class="dz-size"></span><button type="button" class="dz-clear" title="Remove file">&times;</button></span>
+              </div>
             </div>
           </div>
 
-          <div class="upload-zone">
-            <label>B. Raw Issuance Report File(s) (Image 2 &rarr; Per-Ward RIS Slips e.g. PEDIA WARD)</label>
-            <div class="hint">
-              Upload <code>issuance_storage_oct_2026.xls/.csv</code> (and optional <code>issuance_disp_oct_2026.xls/.csv</code>):
+          <div class="section-label">B. Issuance Matrices &rarr; Per-Ward RIS Slips &amp; Ward RSMI</div>
+          <div class="upload-grid">
+            <div class="dropzone" data-input="fileIss1">
+              <input type="file" id="fileIss1" name="issuance_files" accept=".xls,.xlsx,.csv" />
+              <div class="dz-top">
+                <div class="dz-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                </div>
+                <div>
+                  <div class="dz-title">Storage Issuance</div>
+                  <div class="dz-sub">e.g. issuance_storage_oct_2026.csv</div>
+                </div>
+              </div>
+              <div class="dz-pill">
+                <span class="dz-fname"></span>
+                <span class="dz-meta"><span class="dz-size"></span><button type="button" class="dz-clear" title="Remove file">&times;</button></span>
+              </div>
             </div>
-            <div style="margin-bottom:8px;">
-              <strong style="font-size:0.84rem; color:#1e40af;">Issuance File 1 — Storage Issuance (e.g. <code>issuance_storage_oct_2026.csv</code>):</strong>
-              <input type="file" name="issuance_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
-            </div>
-            <div>
-              <strong style="font-size:0.84rem; color:#1e40af;">Issuance File 2 (Optional) — Dispensing Issuance (e.g. <code>issuance_disp_oct_2026.csv</code>):</strong>
-              <input type="file" name="issuance_files" accept=".xls,.xlsx,.csv" style="margin-top:4px;" />
+
+            <div class="dropzone" data-input="fileIss2">
+              <input type="file" id="fileIss2" name="issuance_files" accept=".xls,.xlsx,.csv" />
+              <div class="dz-top">
+                <div class="dz-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                </div>
+                <div>
+                  <div class="dz-title">Dispensing Issuance <span style="font-weight:500; color:var(--muted);">(Optional)</span></div>
+                  <div class="dz-sub">e.g. issuance_disp_oct_2026.csv</div>
+                </div>
+              </div>
+              <div class="dz-pill">
+                <span class="dz-fname"></span>
+                <span class="dz-meta"><span class="dz-size"></span><button type="button" class="dz-clear" title="Remove file">&times;</button></span>
+              </div>
             </div>
           </div>
 
-          <div class="upload-zone">
-            <label>C. Masterlist Reference File (For Column B "Unit" Lookup)</label>
-            <div class="hint">
-              Pre-configured to use <code>INVENTORY UTILIZATION REPORT_MASTERLIST_2026_V30.xlsx</code> (Column H). Upload a newer version only if needed:
-            </div>
+          <div class="section-label">C. Masterlist Reference (Unit Lookup Override — Optional)</div>
+          <div class="dropzone" data-input="masterlist_file">
             <input type="file" name="masterlist_file" id="masterlist_file" accept=".xlsx,.xls" />
+            <div class="dz-top">
+              <div class="dz-icon" style="color:var(--accent);">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </div>
+              <div>
+                <div class="dz-title">Upload Custom Masterlist (.xlsx)</div>
+                <div class="dz-sub" id="masterlistHint">Leave empty to auto-use the latest MASTERLIST in workspace (Column H units).</div>
+              </div>
+            </div>
+            <div class="dz-pill">
+              <span class="dz-fname"></span>
+              <span class="dz-meta"><span class="dz-size"></span><button type="button" class="dz-clear" title="Remove file">&times;</button></span>
+            </div>
           </div>
 
-          <div class="btn-row">
-            <button type="submit" class="btn-primary" id="btnRunUpload">
-              &#9654; Clean Files &amp; Generate All RIS + RSMI
+          <div class="btn-row" style="margin-top:18px;">
+            <button type="submit" class="btn-primary btn-lg" id="btnRunUpload">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Clean Files &amp; Generate All RIS + RSMI
             </button>
-            <button type="button" class="btn-accent" id="btnRunWorkspaceOct">
-              &#9889; Quick-Run with Workspace October 2026 Files
+            <button type="button" class="btn-accent btn-lg" id="btnRunWorkspaceOct">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Quick-Run October 2026 Workspace Files
             </button>
           </div>
         </div>
 
-        <!-- Right Column: Settings & Signatories -->
+        <!-- Right Card: Settings & Signatories -->
         <div class="card">
-          <h2>2. RIS Settings &amp; Signatories</h2>
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              2. Settings &amp; Signatories
+            </div>
+          </div>
 
-          <div class="form-row">
+          <div class="form-grid-2">
             <div class="form-group">
-              <label>Reporting Month</label>
+              <label for="month_name">Reporting Month</label>
               <select name="month_name" id="month_name" onchange="updateFolderDefault()">
                 <option value="JANUARY">JANUARY</option>
                 <option value="FEBRUARY">FEBRUARY</option>
@@ -557,182 +1024,283 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Reporting Year</label>
+              <label for="year">Reporting Year</label>
               <input type="text" name="year" id="year" value="2026" oninput="updateFolderDefault()" />
             </div>
           </div>
 
           <div class="form-group">
-            <label>Segregated Output Folder Name</label>
+            <label for="output_folder_name">Output Folder Name</label>
             <input type="text" name="output_folder_name" id="output_folder_name" value="OUTPUT_OCTOBER_2026" />
           </div>
 
           <div class="form-group">
-            <label>Requested By (Printed Name)</label>
-            <input type="text" name="req_by_name" value="SABA, LEONARDO CONCHITO SEBASTIAN" />
+            <label for="req_by_name">Requested By (Printed Name)</label>
+            <input type="text" id="req_by_name" name="req_by_name" value="SABA, LEONARDO CONCHITO SEBASTIAN" />
           </div>
 
           <div class="form-group">
-            <label>Requested By (Designation)</label>
-            <input type="text" name="req_by_desig" value="Administrative Assistant II" />
+            <label for="req_by_desig">Requested By (Designation)</label>
+            <input type="text" id="req_by_desig" name="req_by_desig" value="Administrative Assistant II" />
           </div>
 
-          <div class="form-group">
-            <label>Approved By (Printed Name — ALL CAPS)</label>
-            <input type="text" name="app_by_name" value="SALVE CERTEZA" />
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="app_by_name">Approved By (ALL CAPS)</label>
+              <input type="text" id="app_by_name" name="app_by_name" value="SALVE CERTEZA" />
+            </div>
+            <div class="form-group">
+              <label for="app_by_desig">Designation</label>
+              <input type="text" id="app_by_desig" name="app_by_desig" value="Pharmacist V" />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Approved By (Designation)</label>
-            <input type="text" name="app_by_desig" value="Pharmacist V" />
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="rsmi_custodian_name">RSMI Custodian (Optional)</label>
+              <input type="text" id="rsmi_custodian_name" name="rsmi_custodian_name" placeholder="Defaults to Approved By" />
+            </div>
+            <div class="form-group">
+              <label for="sig_date">Signatory Date</label>
+              <input type="text" id="sig_date" name="sig_date" value="" />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Signatory Date (Requested &amp; Approved)</label>
-            <input type="text" name="sig_date" value="11/09/2026" />
-          </div>
+          <label class="check-inline">
+            <input type="checkbox" name="mirror_outputs" value="true" />
+            Mirror outputs to secondary PC backup folders (if present)
+          </label>
         </div>
       </div>
     </form>
 
     <!-- Results Section -->
-    <div id="resultsSection">
+    <section id="resultsSection">
       <div class="card">
-        <h2>3. Segregated Output Folders &amp; Generated Deliverables</h2>
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            3. Generated Deliverables &amp; Audit Summary
+          </div>
+        </div>
 
+        <!-- KPI Stats -->
         <div class="stats-grid">
-          <div class="stat-box">
-            <div class="num" id="statRisFiles">0</div>
-            <div class="lbl">Total RIS Files Generated</div>
+          <div class="stat-card">
+            <div class="num tabular" id="statRisFiles">0</div>
+            <div class="lbl">Ward RIS Files Included</div>
           </div>
-          <div class="stat-box">
-            <div class="num" id="statMasterQty">0</div>
-            <div class="lbl">Master RIS Consumption Units</div>
+          <div class="stat-card emerald">
+            <div class="num tabular" id="statMasterQty">0</div>
+            <div class="lbl">Master Consumption Units</div>
           </div>
-          <div class="stat-box">
-            <div class="num" id="statWardQty">0</div>
-            <div class="lbl">Total Ward Issuance Units</div>
+          <div class="stat-card indigo">
+            <div class="num tabular" id="statWardQty">0</div>
+            <div class="lbl">Ward Issuance Units</div>
           </div>
-          <div class="stat-box">
-            <div class="num" id="statRsmiRows">0</div>
-            <div class="lbl">Total Medicine Rows in RSMI.xlsx</div>
+          <div class="stat-card violet">
+            <div class="num tabular" id="statRsmiRows">0</div>
+            <div class="lbl">Ward RSMI Rows</div>
           </div>
         </div>
 
-        <div class="folder-box">
+        <!-- Audit & Warnings Card -->
+        <div class="audit-card" id="auditCard">
+          <div class="audit-summary">
+            <div class="audit-pills" id="auditPills"></div>
+            <button type="button" class="btn-outline btn-sm" id="btnToggleAudit" onclick="toggleAuditDetails()" style="display:none;">
+              View Details
+            </button>
+          </div>
+          <div class="audit-details" id="auditDetails"></div>
+        </div>
+
+        <!-- Segregated Folders -->
+        <div class="folder-row">
           <div>
-            <strong>Segregated Cleaned Files Folder (01_CLEANED_DATA):</strong><br/>
-            <span class="folder-path" id="cleanedDirPath"></span>
+            <strong>Cleaned HIS Data (<code>01_CLEANED_DATA</code>):</strong>
+            <code id="cleanedDirPath"></code>
           </div>
-          <div class="btn-row" style="margin-top:0;">
-            <button type="button" class="btn-outline" id="btnOpenCleaned" onclick="openFolder('cleaned', this)">&#128194; Open Cleaned Folder</button>
-            <button type="button" class="btn-outline" id="btnZipCleaned" onclick="downloadZip('cleaned', this)">&#11015; Download Cleaned ZIP</button>
+          <div class="btn-row">
+            <button type="button" class="btn-outline btn-sm" onclick="openFolder('cleaned', this)">Open Folder</button>
+            <button type="button" class="btn-outline btn-sm" onclick="downloadZip('cleaned', this)">Download ZIP</button>
           </div>
         </div>
 
-        <div class="folder-box">
+        <div class="folder-row">
           <div>
-            <strong>Final RIS &amp; RSMI Folder (02_RIS_FINAL):</strong><br/>
-            <span class="folder-path" id="finalDirPath"></span>
+            <strong>Final RIS &amp; RSMI Folder (<code>02_RIS_FINAL</code>):</strong>
+            <code id="finalDirPath"></code>
           </div>
-          <div class="btn-row" style="margin-top:0;">
-            <button type="button" class="btn-primary" id="btnOpenFinal" onclick="openFolder('final', this)">&#128194; Open Final RIS &amp; RSMI Folder</button>
-            <button type="button" class="btn-accent" id="btnZipFinal" onclick="downloadZip('final', this)">&#11015; Download Final RIS + RSMI ZIP</button>
+          <div class="btn-row">
+            <button type="button" class="btn-primary btn-sm" onclick="openFolder('final', this)">Open Folder</button>
+            <button type="button" class="btn-accent btn-sm" onclick="downloadZip('final', this)">Download Final ZIP</button>
           </div>
         </div>
 
-        <!-- Dedicated Master Populated RSMI Box -->
-        <!-- Dedicated Master Populated RSMI Box -->
-        <div class="folder-box" id="populatedRsmiBox" style="background:#eff6ff; border-color:#93c5fd; display:none; flex-direction:column; gap:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; width:100%;">
+        <!-- Master Populated RSMI Box -->
+        <div id="populatedRsmiBox" style="display:none; margin-top:16px; border:1px solid var(--primary-border); background:#f8fbff; border-radius:var(--radius-md); padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-              <strong style="color:#1e3a8a;">Master Populated RSMI (for <span id="popSourceRisName">RIS - OCTOBER_2026_POPULATED.xlsx</span>):</strong><br/>
-              <span class="folder-path" id="popRsmiFilename" style="background:#dbeafe; color:#1e40af; font-weight:700;">RSMI-OCTOBER_2026-Populated.xlsx</span>
-              <span style="font-size:0.84rem; color:#334155; margin-left:8px;">
-                • RSI No: <strong id="popRsmiCode">OCT-2026-PHARM</strong>
-                • Items: <strong id="popRsmiItems">637</strong>
-                • Total Qty: <strong id="popRsmiQty">378,600</strong>
-              </span>
+              <div style="font-weight:700; color:#1e3a8a; font-size:0.95rem;">
+                Master Populated RSMI (<span id="popSourceRisName">RIS - POPULATED.xlsx</span>)
+              </div>
+              <div style="font-size:0.81rem; color:var(--text-secondary); margin-top:3px;">
+                <code id="popRsmiFilename">RSMI-Populated.xlsx</code>
+                &bull; RSI No: <strong id="popRsmiCode">-</strong>
+                &bull; Items: <strong id="popRsmiItems" class="tabular">0</strong>
+                &bull; Total Qty: <strong id="popRsmiQty" class="tabular">0</strong>
+              </div>
             </div>
-            <div class="btn-row" style="margin-top:0;">
-              <button type="button" class="btn-primary" onclick="downloadPopulatedRsmi('xlsx', this)" style="padding:9px 14px; font-size:0.86rem;">
-                &#11015; Download All <span id="btnPopXlsxLbl">RSMI-Populated.xlsx</span>
+            <div class="btn-row">
+              <button type="button" class="btn-primary btn-sm" onclick="downloadPopulatedRsmi('xlsx', this)">
+                Download Consolidated .xlsx
               </button>
-              <button type="button" class="btn-outline" onclick="downloadPopulatedRsmi('xls', this)" style="padding:9px 14px; font-size:0.86rem;">
-                &#11015; Download .xls
+              <button type="button" class="btn-outline btn-sm" onclick="downloadPopulatedRsmi('xls', this)">
+                Download .xls
               </button>
             </div>
           </div>
-          <!-- Fund Cluster Pills for Populated RSMI -->
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed #bfdbfe; font-size:0.84rem;">
-            <span style="font-weight:700; color:#1e3a8a;">Segregated by Fund:</span>
-            <button type="button" class="btn-outline" style="padding:4px 10px; font-size:0.80rem; background:#fff;" onclick="downloadCustomRsmi(currentPopRafFile, this)">
-              &#11015; <strong>RAF</strong> (DMR/PROD): <span id="popRafStats">408 items</span>
-            </button>
-            <button type="button" class="btn-outline" style="padding:4px 10px; font-size:0.80rem; background:#fff;" onclick="downloadCustomRsmi(currentPopIgfFile, this)">
-              &#11015; <strong>IGF</strong> (DMEP/DMC): <span id="popIgfStats">205 items</span>
-            </button>
-            <button type="button" class="btn-outline" style="padding:4px 10px; font-size:0.80rem; background:#fff;" onclick="downloadCustomRsmi(currentPopDonFile, this)">
-              &#11015; <strong>DON</strong> (DMD/DMDON): <span id="popDonStats">28 items</span>
-            </button>
+
+          <div class="fund-grid">
+            <div class="fund-card raf">
+              <div class="fund-head">
+                <span class="fund-tag">RAF (Populated)</span>
+                <span class="fund-pfx">DMR / PROD / DMNP</span>
+              </div>
+              <div class="fund-stat tabular" id="popRafStats">0 items</div>
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi(currentPopFundFiles.RAF?.xlsx, this)">.xlsx</button>
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi(currentPopFundFiles.RAF?.xls, this)">.xls</button>
+              </div>
+            </div>
+            <div class="fund-card igf">
+              <div class="fund-head">
+                <span class="fund-tag">IGF (Populated)</span>
+                <span class="fund-pfx">DMEP / DMC / DMCSP</span>
+              </div>
+              <div class="fund-stat tabular" id="popIgfStats">0 items</div>
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi(currentPopFundFiles.IGF?.xlsx, this)">.xlsx</button>
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi(currentPopFundFiles.IGF?.xls, this)">.xls</button>
+              </div>
+            </div>
+            <div class="fund-card don">
+              <div class="fund-head">
+                <span class="fund-tag">DON (Populated)</span>
+                <span class="fund-pfx">DMD / DMDON</span>
+              </div>
+              <div class="fund-stat tabular" id="popDonStats">0 items</div>
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi(currentPopFundFiles.DON?.xlsx, this)">.xlsx</button>
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi(currentPopFundFiles.DON?.xls, this)">.xls</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <h2 style="margin-top:24px;">Ward Issuance RSMI Summary — Per-RIS Item Count &amp; Total Quantity</h2>
-
-        <!-- Exclusion Controls Toolbar -->
-        <div class="rsmi-toolbar">
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span class="excl-badge zero" id="exclCounterBadge">0 RIS selected to exclude</span>
-            <button type="button" class="btn-outline" style="padding:7px 12px; font-size:0.83rem;" onclick="toggleAllExclusions(true)">Select All</button>
-            <button type="button" class="btn-outline" style="padding:7px 12px; font-size:0.83rem;" onclick="toggleAllExclusions(false)">Clear Selection</button>
-            <button type="button" class="btn-outline" id="btnRestoreExcl" style="padding:7px 12px; font-size:0.83rem; display:none;" onclick="restoreExcludedRis(this)">&#8634; Restore Excluded RIS Files</button>
-          </div>
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <button type="button" class="btn-danger-proceed" id="btnProceedExclude" onclick="excludeCheckedRowsFromList()" disabled>
-              &#10006; 1. Exclude Selected from List
-            </button>
-            <button type="button" class="btn-accent" id="btnSaveOverwriteRsmi" onclick="saveAndOverwriteRsmi(this)">
-              &#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)
-            </button>
-            <button type="button" class="btn-outline" id="btnDownloadRsmi" onclick="downloadRsmiFile(this)" style="padding:10px 14px; font-size:0.86rem;">
-              &#11015; Download RSMI.xlsx
-            </button>
+        <!-- Ward RSMI by Fund Cluster -->
+        <div style="margin-top:18px;">
+          <div class="section-label">Ward Issuance RSMI Deliverables (.xlsx &amp; .xls)</div>
+          <div class="fund-grid">
+            <div class="fund-card raf">
+              <div class="fund-head">
+                <span class="fund-tag">RSMI - RAF</span>
+                <span class="fund-pfx">DMR / PROD / DMNP</span>
+              </div>
+              <div class="fund-stat tabular" id="wardRafStats">0 items</div>
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi('RSMI - RAF.xlsx', this)">.xlsx</button>
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi('RSMI - RAF.xls', this)">.xls</button>
+              </div>
+            </div>
+            <div class="fund-card igf">
+              <div class="fund-head">
+                <span class="fund-tag">RSMI - IGF</span>
+                <span class="fund-pfx">DMEP / DMC / DMCSP</span>
+              </div>
+              <div class="fund-stat tabular" id="wardIgfStats">0 items</div>
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi('RSMI - IGF.xlsx', this)">.xlsx</button>
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi('RSMI - IGF.xls', this)">.xls</button>
+              </div>
+            </div>
+            <div class="fund-card don">
+              <div class="fund-head">
+                <span class="fund-tag">RSMI - DON</span>
+                <span class="fund-pfx">DMD / DMDON</span>
+              </div>
+              <div class="fund-stat tabular" id="wardDonStats">0 items</div>
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi('RSMI - DON.xlsx', this)">.xlsx</button>
+                <button type="button" class="btn-outline btn-sm" onclick="downloadCustomRsmi('RSMI - DON.xls', this)">.xls</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Segregated Fund Cluster Quick-Download Bar for Ward RSMI -->
-        <div id="wardFundClusterBar" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:0.84rem;">
-          <span style="font-weight:700; color:#334155;">&#128193; Download Ward RSMI by Fund Cluster:</span>
-          <button type="button" class="btn-outline" style="padding:5px 11px; font-size:0.81rem; background:#fff;" onclick="downloadCustomRsmi('RSMI - RAF.xlsx', this)">
-            &#11015; <strong>RSMI - RAF</strong> (DMR/PROD): <span id="wardRafStats">854 items</span>
-          </button>
-          <button type="button" class="btn-outline" style="padding:5px 11px; font-size:0.81rem; background:#fff;" onclick="downloadCustomRsmi('RSMI - IGF.xlsx', this)">
-            &#11015; <strong>RSMI - IGF</strong> (DMEP/DMC): <span id="wardIgfStats">181 items</span>
-          </button>
-          <button type="button" class="btn-outline" style="padding:5px 11px; font-size:0.81rem; background:#fff;" onclick="downloadCustomRsmi('RSMI - DON.xlsx', this)">
-            &#11015; <strong>RSMI - DON</strong> (DMD/DMDON): <span id="wardDonStats">53 items</span>
-          </button>
+        <!-- Print-Ready PDF Batch Card -->
+        <div class="pdf-panel" id="pdfExportPanel">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div style="font-weight:700; color:#1e3a8a; font-size:0.93rem;">Print-Ready A4 Portrait PDFs (<code>03_PRINT_PDF</code>)</div>
+              <div style="font-size:0.79rem; color:var(--text-secondary);" id="pdfStatusNote">
+                Uses headless LibreOffice while keeping all <code>.xlsx</code> &amp; <code>.xls</code> files untouched.
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-primary btn-sm" id="btnExportRsmiPdf" onclick="exportPrintPdfs('rsmi', this)">Export RSMI PDFs</button>
+              <button type="button" class="btn-outline btn-sm" id="btnExportAllPdf" onclick="exportPrintPdfs('all', this)">Export All RIS + RSMI PDFs</button>
+              <button type="button" class="btn-outline btn-sm" id="btnOpenPdfFolder" style="display:none;" onclick="openFolder('pdf', this)">Open PDF Folder</button>
+              <button type="button" class="btn-accent btn-sm" id="btnZipPdf" style="display:none;" onclick="downloadZip('pdf', this)">Download PDFs ZIP</button>
+            </div>
+          </div>
+          <div class="pdf-list" id="pdfChipsList"></div>
         </div>
-        <div id="unsavedRsmiNotice" style="display:none; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:0.88rem; font-weight:600;">
-          &#9888; You have excluded RIS items from the list above. Click <strong>"&#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)"</strong> to overwrite the RSMI file in <code>02_RIS_FINAL/</code>!
+
+        <!-- Ward Exclusion Toolbar & Summary Table -->
+        <div class="section-label" style="margin-top:22px;">Ward Issuance RSMI Summary &amp; Exclusions</div>
+        <div class="table-toolbar">
+          <div class="btn-row">
+            <input type="text" class="search-box" id="wardSearchInput" placeholder="Filter by Ward, RSI No., or file..." oninput="filterSummaryTable()" />
+            <span class="excl-badge zero" id="exclCounterBadge">0 selected</span>
+            <button type="button" class="btn-outline btn-sm" onclick="toggleAllExclusions(true)">Select Visible</button>
+            <button type="button" class="btn-outline btn-sm" onclick="toggleAllExclusions(false)">Clear</button>
+            <button type="button" class="btn-outline btn-sm" id="btnRestoreExcl" style="display:none;" onclick="restoreExcludedRis(this)">Restore Excluded</button>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-danger btn-sm" id="btnProceedExclude" onclick="excludeCheckedRowsFromList()" disabled>
+              1. Exclude Selected
+            </button>
+            <button type="button" class="btn-accent btn-sm" id="btnSaveOverwriteRsmi" onclick="saveAndOverwriteRsmi(this)">
+              2. Save &amp; Overwrite RSMI
+            </button>
+            <button type="button" class="btn-outline btn-sm" onclick="downloadRsmiFile('xlsx', this)">RSMI.xlsx</button>
+            <button type="button" class="btn-outline btn-sm" onclick="downloadRsmiFile('xls', this)">RSMI.xls</button>
+          </div>
+        </div>
+
+        <div id="unsavedRsmiNotice" class="alert alert-warn" style="margin-bottom:12px;">
+          <span>You have pending exclusions. Click <strong>"2. Save &amp; Overwrite RSMI"</strong> to rewrite the RSMI workbooks in <code>02_RIS_FINAL/</code>.</span>
         </div>
 
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th style="width:90px; text-align:center;">
-                  <label style="cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
-                    <input type="checkbox" class="chk-input" id="chkAllHeader" onchange="toggleAllExclusions(this.checked)" />
-                    Exclude
-                  </label>
+                <th style="width:76px; text-align:center;">
+                  <input type="checkbox" class="chk-input" id="chkAllHeader" onchange="toggleAllExclusions(this.checked)" title="Select all visible rows" />
                 </th>
                 <th>#</th>
                 <th>RSI No:</th>
                 <th>Office / Ward</th>
-                <th class="num-col">Item Count</th>
-                <th class="num-col">Total Quantity</th>
+                <th class="num-col">RAF Qty</th>
+                <th class="num-col">IGF Qty</th>
+                <th class="num-col">DON Qty</th>
+                <th class="num-col">Items</th>
+                <th class="num-col">Total Qty</th>
                 <th>Generated File</th>
               </tr>
             </thead>
@@ -740,21 +1308,41 @@
           </table>
         </div>
       </div>
-    </div>
-
-  </div>
+    </section>
+  </main>
 
   <script>
     let currentCleanedDir = "";
     let currentFinalDir = "";
+    let currentPdfDir = "";
     let currentPopRsmiXlsx = "";
     let currentPopRsmiXls = "";
-    let currentPopRafFile = "";
-    let currentPopIgfFile = "";
-    let currentPopDonFile = "";
-    let progressTimer = null;
+    let currentPopFundFiles = {};
     let pendingExcludedFiles = [];
     let currentSummaryRows = [];
+    let progressPollTimer = null;
+    let libreOfficeReady = false;
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes) return "";
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function setServerStatus(text, busy = false) {
+      document.getElementById("serverStatusText").textContent = text;
+      const dot = document.getElementById("serverStatusDot");
+      dot.className = busy ? "dot busy" : "dot";
+    }
 
     function updateFolderDefault() {
       const m = document.getElementById("month_name").value;
@@ -764,72 +1352,166 @@
 
     function showStatus(msg, type) {
       const el = document.getElementById("statusBanner");
-      el.style.display = "block";
-      el.className = "status-" + type;
-      el.innerHTML = msg;
+      const clsMap = { loading: "alert-info", success: "alert-success", warn: "alert-warn", error: "alert-error" };
+      el.className = `alert show ${clsMap[type] || "alert-info"}`;
+      el.innerHTML = `<span>${msg}</span>`;
     }
 
-    function startProgressAnimation(customMsg) {
-      const container = document.getElementById("progressContainer");
-      const bar = document.getElementById("progressBarFill");
-      const txt = document.getElementById("progressText");
-      const pct = document.getElementById("progressPercent");
-      const s1 = document.getElementById("pStage1");
-      const s2 = document.getElementById("pStage2");
-      const s3 = document.getElementById("pStage3");
-      const s4 = document.getElementById("pStage4");
+    function showLockedBanner(lockedFiles) {
+      const el = document.getElementById("lockedFilesBanner");
+      if (!lockedFiles || lockedFiles.length === 0) {
+        el.className = "alert alert-warn";
+        el.innerHTML = "";
+        return;
+      }
+      el.className = "alert alert-warn show";
+      el.innerHTML = `<span><strong>Locked Workbook Warning:</strong> Close the following file(s) in Excel/LibreOffice Calc and retry saving so updates take effect: ${lockedFiles.map(f => `<code>${escapeHtml(f)}</code>`).join(", ")}</span>`;
+    }
 
-      [s1, s2, s3, s4].forEach(s => s.className = "progress-stage-item");
+    // Initialize today's date & workspace defaults
+    (function initApp() {
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const yyyy = now.getFullYear();
+      document.getElementById("sig_date").value = `${mm}/${dd}/${yyyy}`;
+      refreshDefaults();
+      initDropzones();
+    })();
+
+    async function refreshDefaults() {
+      try {
+        const res = await fetch("/api/defaults");
+        const data = await res.json();
+        libreOfficeReady = Boolean(data.libreoffice_available);
+
+        const noteEl = document.getElementById("masterlistDetectedNote");
+        if (data.default_masterlist_name) {
+          noteEl.innerHTML = `Default Masterlist: <code>${escapeHtml(data.default_masterlist_name)}</code>`;
+          document.getElementById("masterlistHint").textContent = `Auto-using ${data.default_masterlist_name} (Column H units) unless overridden.`;
+        } else {
+          noteEl.textContent = "No default Masterlist detected in workspace.";
+        }
+
+        const sel = document.getElementById("existingOutputSelect");
+        const outputs = data.outputs || [];
+        sel.innerHTML = "";
+        if (outputs.length === 0) {
+          sel.innerHTML = `<option value="">No OUTPUT_* folders found yet</option>`;
+          document.getElementById("btnLoadExisting").disabled = true;
+        } else {
+          outputs.forEach(out => {
+            const opt = document.createElement("option");
+            opt.value = out.final_dir;
+            opt.textContent = `${out.name} (${out.xlsx_count} files • ${out.modified})`;
+            sel.appendChild(opt);
+          });
+          document.getElementById("btnLoadExisting").disabled = false;
+        }
+
+        const pdfRsmiBtn = document.getElementById("btnExportRsmiPdf");
+        const pdfAllBtn = document.getElementById("btnExportAllPdf");
+        if (!libreOfficeReady) {
+          pdfRsmiBtn.disabled = true;
+          pdfAllBtn.disabled = true;
+          document.getElementById("pdfStatusNote").textContent = "LibreOffice (soffice.com) not detected on this PC — PDF batch export disabled.";
+        }
+      } catch (err) {
+        console.warn("Defaults fetch failed:", err);
+      }
+    }
+
+    function initDropzones() {
+      document.querySelectorAll(".dropzone").forEach(dz => {
+        const input = dz.querySelector('input[type="file"]');
+        const clearBtn = dz.querySelector(".dz-clear");
+
+        function syncPill() {
+          if (input.files && input.files.length > 0) {
+            const f = input.files[0];
+            dz.classList.add("has-file");
+            dz.querySelector(".dz-fname").textContent = f.name;
+            dz.querySelector(".dz-size").textContent = formatFileSize(f.size);
+          } else {
+            dz.classList.remove("has-file");
+            dz.querySelector(".dz-fname").textContent = "";
+            dz.querySelector(".dz-size").textContent = "";
+          }
+        }
+
+        input.addEventListener("change", syncPill);
+        clearBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          input.value = "";
+          syncPill();
+        });
+
+        ["dragenter", "dragover"].forEach(evt => {
+          dz.addEventListener(evt, e => {
+            e.preventDefault();
+            dz.classList.add("dragover");
+          });
+        });
+        ["dragleave", "drop"].forEach(evt => {
+          dz.addEventListener(evt, e => {
+            e.preventDefault();
+            dz.classList.remove("dragover");
+          });
+        });
+        dz.addEventListener("drop", e => {
+          const files = e.dataTransfer?.files;
+          if (files && files.length > 0) {
+            const dt = new DataTransfer();
+            dt.items.add(files[0]);
+            input.files = dt.files;
+            syncPill();
+          }
+        });
+      });
+    }
+
+    function applyProgressState(pct, stageNum, msg) {
+      const bar = document.getElementById("progressBarFill");
+      const pctEl = document.getElementById("progressPercent");
+      const txtEl = document.getElementById("progressText");
+      bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+      pctEl.textContent = `${Math.round(pct)}%`;
+      if (msg) txtEl.textContent = msg;
+      for (let i = 1; i <= 4; i++) {
+        const sEl = document.getElementById(`pStage${i}`);
+        if (i < stageNum) sEl.className = "progress-stage-item done";
+        else if (i === stageNum) sEl.className = "progress-stage-item active";
+        else sEl.className = "progress-stage-item";
+      }
+    }
+
+    function startRealProgress(jobId, initialMsg) {
+      const container = document.getElementById("progressContainer");
       container.style.display = "block";
       container.scrollIntoView({ behavior: "smooth", block: "center" });
+      applyProgressState(5, 1, initialMsg || "Starting...");
+      setServerStatus("Processing...", true);
 
-      const stages = [
-        { p: 18, msg: customMsg || "Stage 1/4: Unmerging & cleaning raw Consumption and Issuance files into 01_CLEANED_DATA...", active: 1 },
-        { p: 45, msg: customMsg || "Stage 2/4: Populating Master Hospital RIS with Units from MASTERLIST_2026...", active: 2 },
-        { p: 74, msg: customMsg || "Stage 3/4: Generating Per-Ward RIS Slips inside 02_RIS_FINAL...", active: 3 },
-        { p: 92, msg: customMsg || "Stage 4/4: Compiling consolidated RSMI.xlsx & per-RIS item counts...", active: 4 }
-      ];
-
-      let stepIdx = 0;
-      function applyStep(idx) {
-        const st = stages[idx];
-        bar.style.width = st.p + "%";
-        pct.textContent = st.p + "%";
-        txt.textContent = st.msg;
-        [s1, s2, s3, s4].forEach((el, i) => {
-          if (i + 1 < st.active) el.className = "progress-stage-item done";
-          else if (i + 1 === st.active) el.className = "progress-stage-item active";
-          else el.className = "progress-stage-item";
-        });
-      }
-
-      applyStep(0);
-      clearInterval(progressTimer);
-      progressTimer = setInterval(() => {
-        if (stepIdx < stages.length - 1) {
-          stepIdx++;
-          applyStep(stepIdx);
-        }
-      }, 950);
+      clearInterval(progressPollTimer);
+      progressPollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/progress?job_id=${encodeURIComponent(jobId)}`);
+          const p = await res.json();
+          if (p.ok && p.message) {
+            applyProgressState(p.pct || 5, p.stage || 1, p.message);
+          }
+        } catch (_) {}
+      }, 350);
     }
 
-    function finishProgressAnimation(success = true) {
-      clearInterval(progressTimer);
+    function stopRealProgress(success = true, finalMsg = "Completed! All files processed and saved.") {
+      clearInterval(progressPollTimer);
+      setServerStatus(success ? "Ready" : "Attention", false);
       const container = document.getElementById("progressContainer");
-      const bar = document.getElementById("progressBarFill");
-      const txt = document.getElementById("progressText");
-      const pct = document.getElementById("progressPercent");
-      const s1 = document.getElementById("pStage1");
-      const s2 = document.getElementById("pStage2");
-      const s3 = document.getElementById("pStage3");
-      const s4 = document.getElementById("pStage4");
-
       if (success) {
-        bar.style.width = "100%";
-        pct.textContent = "100%";
-        txt.textContent = "Completed! All files processed and saved.";
-        [s1, s2, s3, s4].forEach(el => el.className = "progress-stage-item done");
-        setTimeout(() => { container.style.display = "none"; }, 800);
+        applyProgressState(100, 5, finalMsg);
+        setTimeout(() => { container.style.display = "none"; }, 750);
       } else {
         container.style.display = "none";
       }
@@ -838,45 +1520,155 @@
     async function runPipeline(useWorkspaceOct) {
       const formEl = document.getElementById("pipelineForm");
       const fd = new FormData(formEl);
+      const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      fd.set("job_id", jobId);
       fd.set("use_workspace_october", useWorkspaceOct ? "true" : "false");
 
       const btn1 = document.getElementById("btnRunUpload");
       const btn2 = document.getElementById("btnRunWorkspaceOct");
-      const origBtn1 = btn1.innerHTML;
-      const origBtn2 = btn2.innerHTML;
+      const orig1 = btn1.innerHTML;
+      const orig2 = btn2.innerHTML;
       btn1.disabled = true;
       btn2.disabled = true;
+      if (useWorkspaceOct) btn2.innerHTML = `<span class="spinner"></span> Running October 2026...`;
+      else btn1.innerHTML = `<span class="spinner"></span> Processing Files...`;
 
-      if (useWorkspaceOct) {
-        btn2.innerHTML = `<span class="spinner"></span> Processing October 2026 Files...`;
-      } else {
-        btn1.innerHTML = `<span class="spinner"></span> Cleaning &amp; Generating RIS + RSMI...`;
-      }
-
-      document.getElementById("statusBanner").style.display = "none";
-      startProgressAnimation();
+      document.getElementById("statusBanner").className = "alert";
+      showLockedBanner([]);
+      startRealProgress(jobId, "Uploading & starting pipeline...");
 
       try {
         const res = await fetch("/api/process", { method: "POST", body: fd });
         const data = await res.json();
         if (!data.ok) {
-          finishProgressAnimation(false);
-          showStatus("&#10060; Error: " + (data.error || "Unknown error"), "error");
+          stopRealProgress(false);
+          showStatus(escapeHtml(data.error || "Unknown error"), "error");
           return;
         }
-        finishProgressAnimation(true);
+        stopRealProgress(true);
         document.getElementById("btnRestoreExcl").style.display = "none";
         renderResults(data.result);
-        showStatus("&#9989; Success! All raw files have been cleaned into <code>01_CLEANED_DATA</code> and all finalized RIS slips + <code>RSMI.xlsx</code> have been saved into <code>02_RIS_FINAL</code>.", "success");
+        refreshDefaults();
+        showStatus("Generated all cleaned HIS data, Populated &amp; Ward RIS slips, and segregated Fund Cluster RSMIs.", "success");
       } catch (err) {
-        finishProgressAnimation(false);
-        showStatus("&#10060; Request failed: " + err.message, "error");
+        stopRealProgress(false);
+        showStatus(`Request failed: ${escapeHtml(err.message)}`, "error");
       } finally {
         btn1.disabled = false;
         btn2.disabled = false;
-        btn1.innerHTML = origBtn1;
-        btn2.innerHTML = origBtn2;
+        btn1.innerHTML = orig1;
+        btn2.innerHTML = orig2;
       }
+    }
+
+    async function loadExistingOutput(btnEl) {
+      const sel = document.getElementById("existingOutputSelect");
+      const finalDir = sel.value;
+      if (!finalDir) return;
+      const orig = btnEl.innerHTML;
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<span class="spinner spinner-dark"></span> Loading...`;
+      setServerStatus("Loading folder...", true);
+
+      try {
+        const res = await fetch("/api/load_output", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ final_dir: finalDir }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          showStatus(escapeHtml(data.error || "Could not load folder."), "error");
+          return;
+        }
+        const r = data.result;
+        document.getElementById("btnRestoreExcl").style.display = (r.excluded_files && r.excluded_files.length > 0) ? "inline-flex" : "none";
+        renderResults(r);
+        setServerStatus("Loaded Output", false);
+        showStatus(`Loaded existing output folder <code>${escapeHtml(finalDir)}</code> without modifying existing files.`, "success");
+      } catch (err) {
+        setServerStatus("Ready", false);
+        showStatus(`Failed to load folder: ${escapeHtml(err.message)}`, "error");
+      } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = orig;
+      }
+    }
+
+    function renderAudit(audit) {
+      const a = audit || {};
+      const locked = a.locked_files || [];
+      const unitFb = a.unit_fallbacks || [];
+      const rccFb = a.rcc_fallbacks || [];
+      const unPfx = a.unassigned_prefixes || [];
+
+      showLockedBanner(locked);
+
+      const pillsEl = document.getElementById("auditPills");
+      const detEl = document.getElementById("auditDetails");
+      const toggleBtn = document.getElementById("btnToggleAudit");
+      detEl.classList.remove("open");
+
+      const totalAlerts = locked.length + unitFb.length + rccFb.length + unPfx.length;
+      if (totalAlerts === 0) {
+        pillsEl.innerHTML = `
+          <span class="chip chip-ok">0 Unmapped Prefixes</span>
+          <span class="chip chip-ok">0 Unit Fallbacks</span>
+          <span class="chip chip-ok">0 RCC Fallbacks</span>
+        `;
+        detEl.innerHTML = "";
+        toggleBtn.style.display = "none";
+        return;
+      }
+
+      pillsEl.innerHTML = `
+        <span class="chip ${unPfx.length ? "chip-danger" : "chip-ok"}">${unPfx.length} Non-Standard Prefix(es)</span>
+        <span class="chip ${unitFb.length ? "chip-warn" : "chip-ok"}">${unitFb.length} Unit Fallback(s)</span>
+        <span class="chip ${rccFb.length ? "chip-warn" : "chip-ok"}">${rccFb.length} RCC Default Fallback(s)</span>
+      `;
+      toggleBtn.style.display = "inline-flex";
+      toggleBtn.textContent = "View Details";
+
+      let html = "";
+      if (unPfx.length) {
+        html += `<p><strong>Non-Standard Stock No. Prefixes (routed to default fund):</strong> ${unPfx.map(x => `<code>${escapeHtml(x.stock_no)}</code> &rarr; ${escapeHtml(x.assigned_fund)}`).join(", ")}</p>`;
+      }
+      if (unitFb.length) {
+        html += `<p style="margin-top:6px;"><strong>Masterlist Unit Fallbacks:</strong> ${unitFb.slice(0, 40).map(x => `<code>${escapeHtml(x.code)}</code> (${escapeHtml(x.unit)})`).join(", ")}${unitFb.length > 40 ? ` (+${unitFb.length - 40} more)` : ""}</p>`;
+      }
+      if (rccFb.length) {
+        html += `<p style="margin-top:6px;"><strong>Default Pharmacy RCC Fallbacks:</strong> ${rccFb.map(x => `${escapeHtml(x.office)} &rarr; <code>${escapeHtml(x.rcc)}</code>`).join(", ")}</p>`;
+      }
+      detEl.innerHTML = html;
+    }
+
+    function toggleAuditDetails() {
+      const detEl = document.getElementById("auditDetails");
+      const btn = document.getElementById("btnToggleAudit");
+      detEl.classList.toggle("open");
+      btn.textContent = detEl.classList.contains("open") ? "Hide Details" : "View Details";
+    }
+
+    function renderPdfPanel(pdfDir, pdfFiles) {
+      currentPdfDir = pdfDir || "";
+      const listEl = document.getElementById("pdfChipsList");
+      const btnOpen = document.getElementById("btnOpenPdfFolder");
+      const btnZip = document.getElementById("btnZipPdf");
+
+      if (!pdfDir || !pdfFiles || pdfFiles.length === 0) {
+        btnOpen.style.display = "none";
+        btnZip.style.display = "none";
+        listEl.innerHTML = "";
+        return;
+      }
+
+      btnOpen.style.display = "inline-flex";
+      btnZip.style.display = "inline-flex";
+      listEl.innerHTML = pdfFiles.map(item => {
+        const fn = typeof item === "string" ? item : item.filename;
+        const sizeLabel = (typeof item === "object" && item.size_kb) ? ` (${item.size_kb} KB)` : "";
+        return `<button type="button" class="pdf-chip" onclick="downloadPdfFile('${escapeHtml(fn)}')">${escapeHtml(fn)}${escapeHtml(sizeLabel)}</button>`;
+      }).join("");
     }
 
     function renderResults(r) {
@@ -888,47 +1680,48 @@
 
       if (r.consumption) {
         document.getElementById("statMasterQty").textContent = (r.consumption.total_qty || 0).toLocaleString();
-        if (r.consumption.populated_rsmi) {
-          const pop = r.consumption.populated_rsmi;
+        const pop = r.consumption.populated_rsmi;
+        if (pop) {
           currentPopRsmiXlsx = pop.filename;
           currentPopRsmiXls = pop.xls_filename;
-          if (pop.fund_files) {
-            currentPopRafFile = pop.fund_files.RAF ? pop.fund_files.RAF.xlsx : "";
-            currentPopIgfFile = pop.fund_files.IGF ? pop.fund_files.IGF.xlsx : "";
-            currentPopDonFile = pop.fund_files.DON ? pop.fund_files.DON.xlsx : "";
-          }
+          currentPopFundFiles = pop.fund_files || {};
           if (pop.breakdown) {
             if (pop.breakdown.RAF) document.getElementById("popRafStats").textContent = `${pop.breakdown.RAF.items.toLocaleString()} items (${pop.breakdown.RAF.qty.toLocaleString()} qty)`;
             if (pop.breakdown.IGF) document.getElementById("popIgfStats").textContent = `${pop.breakdown.IGF.items.toLocaleString()} items (${pop.breakdown.IGF.qty.toLocaleString()} qty)`;
             if (pop.breakdown.DON) document.getElementById("popDonStats").textContent = `${pop.breakdown.DON.items.toLocaleString()} items (${pop.breakdown.DON.qty.toLocaleString()} qty)`;
           }
-          document.getElementById("popSourceRisName").textContent = pop.source_ris_file;
+          document.getElementById("popSourceRisName").textContent = pop.source_ris_file || "Master RIS";
           document.getElementById("popRsmiFilename").textContent = `${pop.filename} / ${pop.xls_filename}`;
-          document.getElementById("popRsmiCode").textContent = pop.ris_no;
+          document.getElementById("popRsmiCode").textContent = pop.ris_no || "-";
           document.getElementById("popRsmiItems").textContent = (pop.item_count || 0).toLocaleString();
           document.getElementById("popRsmiQty").textContent = (pop.total_qty || 0).toLocaleString();
-          document.getElementById("btnPopXlsxLbl").textContent = pop.filename;
-          document.getElementById("populatedRsmiBox").style.display = "flex";
+          document.getElementById("populatedRsmiBox").style.display = "block";
         } else {
           document.getElementById("populatedRsmiBox").style.display = "none";
         }
       }
+
       if (r.issuance) {
         document.getElementById("statWardQty").textContent = (r.issuance.total_qty || 0).toLocaleString();
       }
 
       pendingExcludedFiles = [];
-      document.getElementById("unsavedRsmiNotice").style.display = "none";
-      renderRsmiTable(r.rsmi);
+      document.getElementById("unsavedRsmiNotice").className = "alert alert-warn";
+      document.getElementById("wardSearchInput").value = "";
 
-      document.getElementById("resultsSection").style.display = "block";
-      document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth" });
+      renderRsmiTable(r.rsmi || { total_ris_files: 0, total_medicine_rows: 0, summary_rows: [] });
+      renderAudit(r.audit);
+      renderPdfPanel(r.pdf_dir, r.existing_pdfs);
+
+      const sec = document.getElementById("resultsSection");
+      sec.style.display = "block";
+      sec.scrollIntoView({ behavior: "smooth" });
     }
 
     function renderRsmiTable(rsmi) {
       currentSummaryRows = rsmi.summary_rows || [];
-      document.getElementById("statRisFiles").textContent = rsmi.total_ris_files.toLocaleString();
-      document.getElementById("statRsmiRows").textContent = rsmi.total_medicine_rows.toLocaleString();
+      document.getElementById("statRisFiles").textContent = (rsmi.total_ris_files || 0).toLocaleString();
+      document.getElementById("statRsmiRows").textContent = (rsmi.total_medicine_rows || 0).toLocaleString();
 
       if (rsmi.breakdown) {
         if (rsmi.breakdown.RAF) document.getElementById("wardRafStats").textContent = `${rsmi.breakdown.RAF.items.toLocaleString()} items (${rsmi.breakdown.RAF.qty.toLocaleString()} qty)`;
@@ -944,40 +1737,47 @@
       currentSummaryRows.forEach((row, idx) => {
         const tr = document.createElement("tr");
         tr.dataset.filename = row.filename;
-        tr.dataset.risNo = row.ris_no || "";
+        tr.dataset.searchText = `${row.ris_no || ""} ${row.office || ""} ${row.filename || ""}`.toLowerCase();
         tr.innerHTML = `
           <td class="chk-cell" style="text-align:center;">
-            <input type="checkbox" class="chk-input row-excl-chk" value="${row.filename}" onchange="onRowCheckboxChange(this)" />
+            <input type="checkbox" class="chk-input row-excl-chk" value="${escapeHtml(row.filename)}" onchange="onRowCheckboxChange(this)" />
           </td>
-          <td>${idx + 1}</td>
-          <td><strong>${row.ris_no || "(Blank)"}</strong></td>
-          <td>${row.office}</td>
-          <td class="num-col">${row.item_count.toLocaleString()}</td>
-          <td class="num-col">${row.total_qty.toLocaleString()}</td>
-          <td><code>${row.filename}</code></td>
+          <td class="tabular">${idx + 1}</td>
+          <td><strong>${escapeHtml(row.ris_no || "(Blank)")}</strong></td>
+          <td>${escapeHtml(row.office)}</td>
+          <td class="num-col tabular">${(row.raf_qty || 0).toLocaleString()}</td>
+          <td class="num-col tabular">${(row.igf_qty || 0).toLocaleString()}</td>
+          <td class="num-col tabular">${(row.don_qty || 0).toLocaleString()}</td>
+          <td class="num-col tabular">${(row.item_count || 0).toLocaleString()}</td>
+          <td class="num-col tabular"><strong>${(row.total_qty || 0).toLocaleString()}</strong></td>
+          <td><code>${escapeHtml(row.filename)}</code></td>
         `;
         tbody.appendChild(tr);
       });
       updateExclusionBadge();
     }
 
+    function filterSummaryTable() {
+      const q = document.getElementById("wardSearchInput").value.trim().toLowerCase();
+      document.querySelectorAll("#rsmiTableBody tr").forEach(tr => {
+        const hay = tr.dataset.searchText || "";
+        tr.style.display = (!q || hay.includes(q)) ? "" : "none";
+      });
+    }
+
     function onRowCheckboxChange(chk) {
-      const tr = chk.closest("tr");
-      if (chk.checked) {
-        tr.classList.add("row-excluded");
-      } else {
-        tr.classList.remove("row-excluded");
-      }
+      chk.closest("tr").classList.toggle("row-excluded", chk.checked);
       updateExclusionBadge();
     }
 
     function toggleAllExclusions(checked) {
-      const chks = document.querySelectorAll(".row-excl-chk");
-      chks.forEach(c => {
-        c.checked = checked;
-        const tr = c.closest("tr");
-        if (checked) tr.classList.add("row-excluded");
-        else tr.classList.remove("row-excluded");
+      document.querySelectorAll("#rsmiTableBody tr").forEach(tr => {
+        if (tr.style.display === "none") return;
+        const c = tr.querySelector(".row-excl-chk");
+        if (c) {
+          c.checked = checked;
+          tr.classList.toggle("row-excluded", checked);
+        }
       });
       const chkHeader = document.getElementById("chkAllHeader");
       if (chkHeader) chkHeader.checked = checked;
@@ -985,18 +1785,12 @@
     }
 
     function updateExclusionBadge() {
-      const checked = document.querySelectorAll(".row-excl-chk:checked");
-      const count = checked.length;
+      const count = document.querySelectorAll(".row-excl-chk:checked").length;
       const badge = document.getElementById("exclCounterBadge");
       const btnProceed = document.getElementById("btnProceedExclude");
-      badge.textContent = `${count} RIS selected to exclude`;
-      if (count > 0) {
-        badge.className = "excl-badge";
-        btnProceed.disabled = false;
-      } else {
-        badge.className = "excl-badge zero";
-        btnProceed.disabled = true;
-      }
+      badge.textContent = `${count} selected`;
+      badge.className = count > 0 ? "excl-badge" : "excl-badge zero";
+      btnProceed.disabled = count === 0;
     }
 
     function excludeCheckedRowsFromList() {
@@ -1004,48 +1798,39 @@
       if (checked.length === 0) return;
 
       checked.forEach(fn => {
-        if (!pendingExcludedFiles.includes(fn)) {
-          pendingExcludedFiles.push(fn);
-        }
-        // If user checked PHARMACY_RIS_*.xlsx or RIS - *_POPULATED.xlsx, also exclude the other Pharmacy file automatically
+        if (!pendingExcludedFiles.includes(fn)) pendingExcludedFiles.push(fn);
         if (fn.toUpperCase().includes("PHARMACY_RIS_") || fn.toUpperCase().includes("POPULATED")) {
           currentSummaryRows.forEach(r => {
-            if (r.filename.toUpperCase().includes("PHARMACY_RIS_") || r.filename.toUpperCase().includes("POPULATED")) {
-              if (!pendingExcludedFiles.includes(r.filename)) {
-                pendingExcludedFiles.push(r.filename);
-              }
+            if ((r.filename.toUpperCase().includes("PHARMACY_RIS_") || r.filename.toUpperCase().includes("POPULATED")) && !pendingExcludedFiles.includes(r.filename)) {
+              pendingExcludedFiles.push(r.filename);
             }
           });
         }
       });
 
       const remainingRows = currentSummaryRows.filter(r => !pendingExcludedFiles.includes(r.filename));
-      const remItems = remainingRows.reduce((acc, r) => acc + r.item_count, 0);
+      const remItems = remainingRows.reduce((acc, r) => acc + (r.item_count || 0), 0);
       renderRsmiTable({
         total_ris_files: remainingRows.length,
         total_medicine_rows: remItems,
-        summary_rows: remainingRows
+        summary_rows: remainingRows,
       });
 
       document.getElementById("btnRestoreExcl").style.display = "inline-flex";
-      document.getElementById("unsavedRsmiNotice").style.display = "block";
-      showStatus(`&#9888; Removed <strong>${checked.length}</strong> RIS item(s) from the list (${pendingExcludedFiles.length} total excluded). Now click <strong>"&#128190; 2. Save &amp; Overwrite RSMI (.xlsx / .xls)"</strong> to overwrite the RSMI file on disk!`, "loading");
+      document.getElementById("unsavedRsmiNotice").className = "alert alert-warn show";
+      showStatus(`Removed ${checked.length} RIS item(s) from the table preview. Click "2. Save &amp; Overwrite RSMI" to rewrite files on disk.`, "loading");
     }
 
     async function saveAndOverwriteRsmi(btnEl) {
       if (!currentFinalDir) return;
-      // Also include any currently checked rows in case the user clicked Save & Overwrite directly after checking boxes!
-      const currentlyChecked = Array.from(document.querySelectorAll(".row-excl-chk:checked")).map(c => c.value);
-      currentlyChecked.forEach(fn => {
-        if (!pendingExcludedFiles.includes(fn)) {
-          pendingExcludedFiles.push(fn);
-        }
+      document.querySelectorAll(".row-excl-chk:checked").forEach(c => {
+        if (!pendingExcludedFiles.includes(c.value)) pendingExcludedFiles.push(c.value);
       });
 
       const origHtml = btnEl.innerHTML;
       btnEl.disabled = true;
-      btnEl.innerHTML = `<span class="spinner"></span> Saving &amp; Overwriting RSMI...`;
-      startProgressAnimation(`Overwriting RSMI.xlsx and RSMI.xls inside 02_RIS_FINAL (${pendingExcludedFiles.length} RIS excluded)...`);
+      btnEl.innerHTML = `<span class="spinner"></span> Overwriting...`;
+      setServerStatus("Saving RSMI...", true);
 
       try {
         const res = await fetch("/api/save_overwrite_rsmi", {
@@ -1053,72 +1838,28 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             final_dir: currentFinalDir,
-            excluded_files: pendingExcludedFiles
-          })
+            excluded_files: pendingExcludedFiles,
+          }),
         });
-        const rawText = await res.text();
-        let data;
-        try {
-          data = JSON.parse(rawText);
-        } catch (parseErr) {
-          finishProgressAnimation(false);
-          showStatus("&#10060; Server error parsing response. Please refresh the page.", "error");
-          return;
-        }
+        const data = await res.json();
         if (!data.ok) {
-          finishProgressAnimation(false);
-          showStatus("&#10060; Error overwriting RSMI: " + (data.error || "Unknown error"), "error");
+          showStatus(`Error overwriting RSMI: ${escapeHtml(data.error || "Unknown error")}`, "error");
           return;
         }
-        finishProgressAnimation(true);
         pendingExcludedFiles = [];
-        document.getElementById("unsavedRsmiNotice").style.display = "none";
+        document.getElementById("unsavedRsmiNotice").className = "alert alert-warn";
         renderRsmiTable(data.rsmi);
-        if (data.excluded_count_total > 0) {
-          document.getElementById("btnRestoreExcl").style.display = "inline-flex";
-        }
-        showStatus(`&#9989; <strong>Saved &amp; Overwritten!</strong> Both <code>RSMI.xlsx</code> and <code>RSMI.xls</code> in <code>02_RIS_FINAL/</code> have been overwritten at <strong>${data.saved_at}</strong> with <strong>${data.rsmi.total_ris_files}</strong> RIS files (<strong>${data.rsmi.total_medicine_rows.toLocaleString()}</strong> medicine rows).`, "success");
+        showLockedBanner(data.rsmi?.locked_files || []);
+        if (data.excluded_count_total > 0) document.getElementById("btnRestoreExcl").style.display = "inline-flex";
+        showStatus(`Saved &amp; overwritten <code>RSMI.xlsx</code>, <code>RSMI.xls</code> &amp; RAF/IGF/DON files at ${escapeHtml(data.saved_at)} (${data.rsmi.total_ris_files} RIS files, ${data.rsmi.total_medicine_rows.toLocaleString()} rows).`, "success");
       } catch (err) {
-        finishProgressAnimation(false);
-        showStatus("&#10060; Request failed: " + err.message, "error");
+        showStatus(`Request failed: ${escapeHtml(err.message)}`, "error");
       } finally {
+        setServerStatus("Ready", false);
         btnEl.disabled = false;
         btnEl.innerHTML = origHtml;
         updateExclusionBadge();
       }
-    }
-
-    function downloadRsmiFile(btnEl) {
-      if (!currentFinalDir) return;
-      if (btnEl) {
-        const orig = btnEl.innerHTML;
-        btnEl.innerHTML = `<span class="spinner spinner-dark"></span> Downloading...`;
-        setTimeout(() => { btnEl.innerHTML = orig; }, 1200);
-      }
-      window.location.href = "/api/download_rsmi?folder=" + encodeURIComponent(currentFinalDir) + "&fmt=xlsx";
-    }
-
-    function downloadPopulatedRsmi(fmt, btnEl) {
-      if (!currentFinalDir) return;
-      const targetFn = fmt === "xls" ? currentPopRsmiXls : currentPopRsmiXlsx;
-      if (!targetFn) return;
-      if (btnEl) {
-        const orig = btnEl.innerHTML;
-        const isDark = btnEl.classList.contains("btn-outline");
-        btnEl.innerHTML = `<span class="spinner ${isDark ? 'spinner-dark' : ''}"></span> Downloading...`;
-        setTimeout(() => { btnEl.innerHTML = orig; }, 1200);
-      }
-      window.location.href = "/api/download_rsmi?folder=" + encodeURIComponent(currentFinalDir) + "&file=" + encodeURIComponent(targetFn);
-    }
-
-    function downloadCustomRsmi(filename, btnEl) {
-      if (!currentFinalDir || !filename) return;
-      if (btnEl) {
-        const orig = btnEl.innerHTML;
-        btnEl.innerHTML = `<span class="spinner spinner-dark"></span>`;
-        setTimeout(() => { btnEl.innerHTML = orig; }, 1200);
-      }
-      window.location.href = "/api/download_rsmi?folder=" + encodeURIComponent(currentFinalDir) + "&file=" + encodeURIComponent(filename);
     }
 
     async function restoreExcludedRis(btnEl) {
@@ -1126,87 +1867,118 @@
       const origHtml = btnEl.innerHTML;
       btnEl.disabled = true;
       btnEl.innerHTML = `<span class="spinner spinner-dark"></span> Restoring...`;
-      startProgressAnimation("Restoring excluded RIS files and rebuilding RSMI.xlsx...");
+      setServerStatus("Restoring...", true);
 
       try {
         const res = await fetch("/api/restore_exclusions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ final_dir: currentFinalDir })
+          body: JSON.stringify({ final_dir: currentFinalDir }),
         });
         const data = await res.json();
         if (!data.ok) {
-          finishProgressAnimation(false);
-          showStatus("&#10060; Error restoring files: " + (data.error || "Unknown error"), "error");
+          showStatus(`Restore failed: ${escapeHtml(data.error || "Unknown error")}`, "error");
           return;
         }
-        finishProgressAnimation(true);
         pendingExcludedFiles = [];
-        document.getElementById("unsavedRsmiNotice").style.display = "none";
+        document.getElementById("unsavedRsmiNotice").className = "alert alert-warn";
         renderRsmiTable(data.rsmi);
+        showLockedBanner(data.rsmi?.locked_files || []);
         btnEl.style.display = "none";
-        showStatus(`&#9989; Restored <strong>${data.restored_files.length}</strong> RIS file(s) and overwritten <code>RSMI.xlsx</code> &amp; <code>RSMI.xls</code>!`, "success");
+        showStatus(`Restored ${data.restored_files.length} excluded RIS file(s) and regenerated <code>RSMI.xlsx</code> &amp; <code>RSMI.xls</code>.`, "success");
       } catch (err) {
-        finishProgressAnimation(false);
-        showStatus("&#10060; Restore failed: " + err.message, "error");
+        showStatus(`Restore failed: ${escapeHtml(err.message)}`, "error");
       } finally {
+        setServerStatus("Ready", false);
         btnEl.disabled = false;
         btnEl.innerHTML = origHtml;
       }
     }
 
-    async function openFolder(which, btnEl) {
-      const target = which === "cleaned" ? currentCleanedDir : currentFinalDir;
-      if (!target) return;
-      let origHtml = "";
-      if (btnEl) {
-        origHtml = btnEl.innerHTML;
-        btnEl.disabled = true;
-        const isDarkSpinner = btnEl.classList.contains("btn-outline");
-        btnEl.innerHTML = `<span class="spinner ${isDarkSpinner ? 'spinner-dark' : ''}"></span> Opening Folder...`;
+    async function exportPrintPdfs(scope, btnEl) {
+      if (!currentFinalDir) return;
+      const jobId = `pdf_${Date.now()}`;
+      const orig = btnEl.innerHTML;
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<span class="spinner ${btnEl.classList.contains("btn-outline") ? "spinner-dark" : ""}"></span> Exporting PDFs...`;
+      startRealProgress(jobId, "Starting LibreOffice PDF batch export...");
+
+      try {
+        const res = await fetch("/api/export_pdfs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ final_dir: currentFinalDir, scope, job_id: jobId }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          stopRealProgress(false);
+          showStatus(`PDF export failed: ${escapeHtml(data.error || "Unknown error")}`, "error");
+          return;
+        }
+        stopRealProgress(true, `Exported ${data.count} print PDF(s)!`);
+        renderPdfPanel(data.pdf_dir, data.generated);
+        showStatus(`Exported <strong>${data.count}</strong> print-ready PDF file(s) into <code>03_PRINT_PDF/</code> while keeping all Excel files intact.`, "success");
+      } catch (err) {
+        stopRealProgress(false);
+        showStatus(`PDF export error: ${escapeHtml(err.message)}`, "error");
+      } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = orig;
       }
+    }
+
+    function downloadRsmiFile(fmt, btnEl) {
+      if (!currentFinalDir) return;
+      window.location.href = `/api/download_rsmi?folder=${encodeURIComponent(currentFinalDir)}&fmt=${encodeURIComponent(fmt || "xlsx")}`;
+    }
+
+    function downloadPopulatedRsmi(fmt) {
+      if (!currentFinalDir) return;
+      const targetFn = fmt === "xls" ? currentPopRsmiXls : currentPopRsmiXlsx;
+      if (!targetFn) return;
+      window.location.href = `/api/download_rsmi?folder=${encodeURIComponent(currentFinalDir)}&file=${encodeURIComponent(targetFn)}`;
+    }
+
+    function downloadCustomRsmi(filename) {
+      if (!currentFinalDir || !filename) return;
+      window.location.href = `/api/download_rsmi?folder=${encodeURIComponent(currentFinalDir)}&file=${encodeURIComponent(filename)}`;
+    }
+
+    function downloadPdfFile(filename) {
+      if (!currentPdfDir || !filename) return;
+      window.location.href = `/api/download_file?folder=${encodeURIComponent(currentPdfDir)}&file=${encodeURIComponent(filename)}`;
+    }
+
+    async function openFolder(which, btnEl) {
+      const target = which === "cleaned" ? currentCleanedDir : (which === "pdf" ? currentPdfDir : currentFinalDir);
+      if (!target) return;
+      const orig = btnEl.innerHTML;
+      btnEl.disabled = true;
       try {
         await fetch("/api/open_folder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folder: target })
+          body: JSON.stringify({ folder: target }),
         });
-        if (btnEl) {
-          btnEl.innerHTML = `&#10004; Folder Opened!`;
-          setTimeout(() => {
-            btnEl.innerHTML = origHtml;
-            btnEl.disabled = false;
-          }, 1200);
-        }
-      } catch (err) {
-        if (btnEl) {
-          btnEl.innerHTML = origHtml;
-          btnEl.disabled = false;
-        }
+        btnEl.textContent = "Opened";
+        setTimeout(() => { btnEl.innerHTML = orig; btnEl.disabled = false; }, 1000);
+      } catch (_) {
+        btnEl.innerHTML = orig;
+        btnEl.disabled = false;
       }
     }
 
-    function downloadZip(which, btnEl) {
-      const target = which === "cleaned" ? currentCleanedDir : currentFinalDir;
+    function downloadZip(which) {
+      const target = which === "cleaned" ? currentCleanedDir : (which === "pdf" ? currentPdfDir : currentFinalDir);
       if (!target) return;
-      if (btnEl) {
-        const origHtml = btnEl.innerHTML;
-        const isDarkSpinner = btnEl.classList.contains("btn-outline");
-        btnEl.innerHTML = `<span class="spinner ${isDarkSpinner ? 'spinner-dark' : ''}"></span> Preparing ZIP...`;
-        setTimeout(() => { btnEl.innerHTML = origHtml; }, 1800);
-      }
-      window.location.href = "/api/download_zip?folder=" + encodeURIComponent(target);
+      window.location.href = `/api/download_zip?folder=${encodeURIComponent(target)}`;
     }
 
-    document.getElementById("pipelineForm").addEventListener("submit", function(e) {
+    document.getElementById("pipelineForm").addEventListener("submit", e => {
       e.preventDefault();
       runPipeline(false);
     });
-
-    document.getElementById("btnRunWorkspaceOct").addEventListener("click", function() {
-      runPipeline(true);
-    });
+    document.getElementById("btnRunWorkspaceOct").addEventListener("click", () => runPipeline(true));
   </script>
 </body>
 </html>
-

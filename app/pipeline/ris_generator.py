@@ -4,6 +4,7 @@ import math
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.worksheet.pagebreak import Break
+from .utils import safe_save_workbook
 
 thin = Side(border_style="thin", color="000000")
 border_all_thin = Border(top=thin, bottom=thin, left=thin, right=thin)
@@ -143,6 +144,7 @@ def build_ris_workbook(
     app_by_name="SALVE CERTEZA",
     app_by_desig="Pharmacist V",
     sig_date="11/09/2026",
+    locked_files=None,
 ):
     """
     Creates a finalized 8-column RIS Excel workbook (.xlsx) from scratch matching
@@ -564,11 +566,7 @@ def build_ris_workbook(
     ws.page_margins.footer = 0.0
     ws.oddFooter.right.text = "&P of &N"
 
-    try:
-        wb.save(dest_path)
-    except PermissionError:
-        # If the file is currently open in Excel, skip overwriting so the rest of the pipeline succeeds
-        pass
+    safe_save_workbook(wb, dest_path, locked_files=locked_files)
     wb.close()
     return dest_path
 
@@ -586,12 +584,18 @@ def generate_all_ward_ris_files(
     app_by_name="SALVE CERTEZA",
     app_by_desig="Pharmacist V",
     sig_date="11/09/2026",
+    locked_files=None,
+    progress_callback=None,
 ):
     generated_wards = []
-    for ward in sorted(active_wards):
+    sorted_wards = sorted(active_wards)
+    total_wards = len(sorted_wards)
+    for w_idx, ward in enumerate(sorted_wards):
         ward_df = df_combined_issuance[df_combined_issuance[ward] > 0]
         if ward_df.empty:
             continue
+        if progress_callback:
+            progress_callback(w_idx + 1, total_wards, ward)
         ward_items = []
         ward_total_qty = 0
         for _, row in ward_df.iterrows():
@@ -623,6 +627,7 @@ def generate_all_ward_ris_files(
             app_by_name=app_by_name,
             app_by_desig=app_by_desig,
             sig_date=sig_date,
+            locked_files=locked_files,
         )
         generated_wards.append({
             "ward": ward,
