@@ -9,6 +9,78 @@ thin = Side(border_style="thin", color="000000")
 border_all_thin = Border(top=thin, bottom=thin, left=thin, right=thin)
 
 RIS_ITEMS_PER_PAGE = 27
+RIS_TARGET_PAGE_HEIGHT_PT = 1160.0
+
+def _estimate_wrapped_lines(text, chars_per_line=31):
+    """Estimates wrapped line count using word boundaries for Description column (width 35)."""
+    words = str(text or "").split()
+    if not words:
+        return 1
+    lines = 1
+    cur = 0
+    for w in words:
+        add = len(w) if cur == 0 else len(w) + 1
+        if cur + add > chars_per_line and cur > 0:
+            lines += 1
+            cur = len(w)
+        else:
+            cur += add
+    return lines
+
+def _compute_ris_page_heights(slot_lines, header_pt=118.0, target_total_pt=RIS_TARGET_PAGE_HEIGHT_PT):
+    """
+    Computes exact item row heights and bottom footer/signatory heights for a single
+    27-row RIS page so the entire table fills down to the A4 bottom margin without
+    overflowing onto an extra page or clipping multi-line descriptions.
+    """
+    min_item_heights = []
+    for lines in slot_lines:
+        if lines <= 1:
+            min_item_heights.append(18.5)
+        elif lines == 2:
+            min_item_heights.append(27.0)
+        else:
+            min_item_heights.append(37.0 + 10.0 * (lines - 3))
+
+    min_item_sum = sum(min_item_heights)
+    base_footer = {
+        "total": 22.0,
+        "purpose": 26.0,
+        "sig_hdr": 46.0,
+        "name": 22.0,
+        "desig": 19.0,
+        "date": 19.0,
+        "pg": 14.0,
+    }
+    base_footer_sum = sum(base_footer.values())
+    avail_for_items = target_total_pt - header_pt - base_footer_sum
+
+    if min_item_sum <= avail_for_items:
+        extra = avail_for_items - min_item_sum
+        # Allocate a small share (up to 14pt) to extra wet-signature room on lighter pages
+        sig_bonus = round(min(14.0, extra * 0.12), 1)
+        base_footer["sig_hdr"] += sig_bonus
+        per_row_bonus = (extra - sig_bonus) / len(slot_lines)
+        row_heights = [round(h + per_row_bonus, 2) for h in min_item_heights]
+    else:
+        # Dense multi-line page: compact footer slightly first, then clamp excess proportionally
+        # so the page total strictly stays <= target_total_pt and never triggers an orphan break.
+        base_footer["total"] = 20.0
+        base_footer["purpose"] = 24.0
+        base_footer["sig_hdr"] = 38.0
+        base_footer["name"] = 20.0
+        base_footer["desig"] = 18.0
+        base_footer["date"] = 18.0
+        avail_compact = target_total_pt - header_pt - sum(base_footer.values())
+        if min_item_sum <= avail_compact:
+            extra = avail_compact - min_item_sum
+            per_row_bonus = extra / len(slot_lines)
+            row_heights = [round(h + per_row_bonus, 2) for h in min_item_heights]
+        else:
+            scale = avail_compact / min_item_sum
+            row_heights = [round(max(15.5, h * scale), 2) for h in min_item_heights]
+
+    return row_heights, base_footer
 
 def _build_chunked_sum_formula(col_letter, row_ranges, chunk_size=20):
     """
@@ -82,16 +154,16 @@ def build_ris_workbook(
     ws = wb.active
     ws.title = "RIS"
 
-    # 1. Column widths (8 columns: A through H) balanced to 138.0 total width matching RSMI format
+    # 1. Column widths (8 columns: A through H) totaling 143.0 chars with generous Description width (35.0) and balanced signatory columns
     col_widths = {
         'A': 13.5,  # Stock No. / Signatory Labels (left half)
         'B': 9.5,   # Unit / Signatory Labels (right half) -> A+B = 23.0
-        'C': 30.0,  # Description / Requested By -> width 30.0
-        'D': 15.0,  # Quantity (Requisition) / Approved By (left)
-        'E': 15.0,  # Yes (Stock Available) / Approved By (right) -> D+E = 30.0
-        'F': 15.0,  # No (Stock Available) / Issued By (left)
-        'G': 15.0,  # Quantity (Issue) / Issued By (right) -> F+G = 30.0
-        'H': 30.0   # Remarks (Issue) / Received By -> H = 30.0
+        'C': 35.0,  # Description / Requested By -> width 35.0 (prevents tight wrapping/clipping)
+        'D': 14.5,  # Quantity (Requisition) / Approved By (left)
+        'E': 14.5,  # Yes (Stock Available) / Approved By (right) -> D+E = 29.0
+        'F': 14.5,  # No (Stock Available) / Issued By (left)
+        'G': 14.5,  # Quantity (Issue) / Issued By (right) -> F+G = 29.0
+        'H': 27.0   # Remarks (Issue) / Received By -> H = 27.0
     }
     for col_let, w in col_widths.items():
         ws.column_dimensions[col_let].width = w
@@ -223,38 +295,22 @@ def build_ris_workbook(
             cell.border = border_all_thin
 
         # 3. Data Rows for this page (Always standardized to RIS_ITEMS_PER_PAGE = 27 rows per page)
-        # Determine optimal row heights so the table extends near the bottom margin without overflowing
+        # Estimate word-wrapped line counts accurately and distribute leftover vertical space
+        # evenly so the entire page stretches down cleanly near the A4 bottom margin.
         slot_lines = []
         for slot_idx in range(RIS_ITEMS_PER_PAGE):
             if slot_idx < len(page_items):
                 item = page_items[slot_idx]
                 desc = str(item.get("Description", item.get("Item Description", ""))).strip()
-                lines = max(1, math.ceil(len(desc) / 30.0)) if desc else 1
-                slot_lines.append(min(lines, 3))
+                slot_lines.append(_estimate_wrapped_lines(desc, chars_per_line=30) if desc else 1)
             else:
                 slot_lines.append(1)
 
-        total_lines_weight = sum(slot_lines)
-        if total_lines_weight <= 32:
-            # Light / standard ward (mostly single-line or filler rows) -> expand cells vertically to 25.0pt
-            h_single = 25.0
-            h_double = 29.0
-            h_triple = 34.0
-        elif total_lines_weight <= 42:
-            # Moderate ward -> 22.0pt
-            h_single = 22.0
-            h_double = 26.5
-            h_triple = 33.0
-        else:
-            # Heavy multi-line ward (ICU Charity, Cancer, etc.) -> 20.0pt to fit all 27 rows + signatories
-            h_single = 20.0
-            h_double = 25.0
-            h_triple = 32.0
+        row_heights, footer_heights = _compute_ris_page_heights(slot_lines)
 
         data_start_r = r8 + 1
         for slot_idx in range(RIS_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
-            lines = slot_lines[slot_idx]
             if slot_idx < len(page_items):
                 item = page_items[slot_idx]
                 code = str(item.get("Item Code", "")).strip()
@@ -275,18 +331,11 @@ def build_ris_workbook(
                 ws.cell(r, 6, None)
                 ws.cell(r, 7, qty)
                 ws.cell(r, 8, None)
-
-                if lines == 1:
-                    ws.row_dimensions[r].height = h_single
-                elif lines == 2:
-                    ws.row_dimensions[r].height = h_double
-                else:
-                    ws.row_dimensions[r].height = h_triple
             else:
                 # Blank bordered filler row to standardize page height across all wards
                 for c in range(1, 9):
                     ws.cell(r, c, None)
-                ws.row_dimensions[r].height = h_single
+            ws.row_dimensions[r].height = row_heights[slot_idx]
 
             for c in range(1, 9):
                 cell = ws.cell(r, c)
@@ -310,7 +359,7 @@ def build_ris_workbook(
         total_row = data_end_r + 1
 
         # 4. TOTAL / Continuation Row
-        ws.row_dimensions[total_row].height = 20.0
+        ws.row_dimensions[total_row].height = footer_heights["total"]
         ws.cell(total_row, 1).value = 'TOTAL'
         ws.cell(total_row, 2).value = None
         if is_last_page:
@@ -349,7 +398,7 @@ def build_ris_workbook(
 
         # 5. Purpose / Remarks Row (total_row + 1)
         purpose_row = total_row + 1
-        ws.row_dimensions[purpose_row].height = 24.0
+        ws.row_dimensions[purpose_row].height = footer_heights["purpose"]
         if is_master:
             purpose_text = f"Purpose: For Pharmacy Medicines Consumption (General & Consignment) for the month of {month_year_label}"
         else:
@@ -374,11 +423,11 @@ def build_ris_workbook(
         r_desig = purpose_row + 3
         r_date = purpose_row + 4
 
-        # Generous room in r_sig_hdr (40pt) for wet signature, and 20pt/18pt for Name, Designation, and Date
-        ws.row_dimensions[r_sig_hdr].height = 40.0
-        ws.row_dimensions[r_name].height = 20.0
-        ws.row_dimensions[r_desig].height = 18.0
-        ws.row_dimensions[r_date].height = 18.0
+        # Generous room in r_sig_hdr for wet signature, dynamically balanced to fill down to bottom margin
+        ws.row_dimensions[r_sig_hdr].height = footer_heights["sig_hdr"]
+        ws.row_dimensions[r_name].height = footer_heights["name"]
+        ws.row_dimensions[r_desig].height = footer_heights["desig"]
+        ws.row_dimensions[r_date].height = footer_heights["date"]
 
         # Row: Signature Header (with ample blank space below "Requested By:", "Approved By:", etc. for wet signature)
         ws.cell(r_sig_hdr, 1).value = 'Signature:'
@@ -486,7 +535,7 @@ def build_ris_workbook(
 
         # 7. Page count row at bottom right (e.g., "1 of 2")
         r_pg = r_date + 1
-        ws.row_dimensions[r_pg].height = 14.0
+        ws.row_dimensions[r_pg].height = footer_heights["pg"]
         if total_pages > 1:
             ws.cell(r_pg, 8).value = f"{page_idx + 1} of {total_pages}"
             ws.cell(r_pg, 8).font = Font(name='Calibri', size=9.5, italic=True)

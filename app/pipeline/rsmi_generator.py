@@ -7,6 +7,72 @@ from openpyxl.worksheet.pagebreak import Break
 from .rcc_lookup import RccLookup
 
 RSMI_ITEMS_PER_PAGE = 16
+RSMI_TARGET_PAGE_HEIGHT_PT = 1115.0
+
+def _estimate_rsmi_wrapped_lines(text, chars_per_line=34):
+    """Estimates wrapped line count using word boundaries for Item Description (F:G width 41)."""
+    words = str(text or "").split()
+    if not words:
+        return 1
+    lines = 1
+    cur = 0
+    for w in words:
+        add = len(w) if cur == 0 else len(w) + 1
+        if cur + add > chars_per_line and cur > 0:
+            lines += 1
+            cur = len(w)
+        else:
+            cur += add
+    return lines
+
+def _compute_rsmi_page_heights(main_slots_info, recap_slots_info, is_first_page=False, target_total_pt=RSMI_TARGET_PAGE_HEIGHT_PT):
+    """
+    Computes exact Main Table (16 rows) and Recapitulation Table (16 rows) heights plus
+    signatory blank space (`sig_spacer_h`) so every RSMI page (including partial last pages)
+    stretches uniformly down to the A4 bottom margin without overflowing onto an extra page.
+    `main_slots_info` is a list of `(desc_lines, has_long_ris_no)` tuples;
+    `recap_slots_info` is a list of `desc_lines` ints.
+    """
+    def _min_h(lines, long_ris=False):
+        eff = max(lines, 2 if long_ris else 1)
+        if eff <= 1:
+            return 17.5
+        elif eff == 2:
+            return 24.5
+        return 33.0 + 9.5 * (eff - 3)
+
+    main_mins = [_min_h(dl, lr) for dl, lr in main_slots_info]
+    recap_mins = [_min_h(dl, False) for dl in recap_slots_info]
+    min_sum = sum(main_mins) + sum(recap_mins)
+
+    # Fixed row heights per page: banner (72.5 + optional 8pt top row) + main hdr (48)
+    # + main total (18) + recap hdr (34) + recap total (18) + signatory/footer excluding sig spacer r_s3 (100)
+    fixed_pt = (8.0 if is_first_page else 0.0) + 72.5 + 48.0 + 18.0 + 34.0 + 18.0 + 100.0
+    sig_spacer_h = 18.0
+    avail_for_rows = target_total_pt - fixed_pt - sig_spacer_h
+
+    if min_sum <= avail_for_rows:
+        extra = avail_for_rows - min_sum
+        sig_bonus = round(min(14.0, extra * 0.08), 1)
+        sig_spacer_h += sig_bonus
+        per_slot_add = (extra - sig_bonus) / (len(main_mins) + len(recap_mins))
+        main_heights = [round(h + per_slot_add, 2) for h in main_mins]
+        recap_heights = [round(h + per_slot_add, 2) for h in recap_mins]
+    else:
+        # Preserve multi-line readability by proportionally shrinking slack above 15pt
+        floors_m = [15.0 if dl <= 1 else (22.0 if dl == 2 else 30.0 + 8.5 * (dl - 3)) for dl, _ in main_slots_info]
+        floors_r = [15.0 if dl <= 1 else (22.0 if dl == 2 else 30.0 + 8.5 * (dl - 3)) for dl in recap_slots_info]
+        floor_sum = sum(floors_m) + sum(floors_r)
+        if floor_sum <= avail_for_rows and min_sum > floor_sum:
+            ratio = (avail_for_rows - floor_sum) / (min_sum - floor_sum)
+            main_heights = [round(fl + (mn - fl) * ratio, 2) for fl, mn in zip(floors_m, main_mins)]
+            recap_heights = [round(fl + (mn - fl) * ratio, 2) for fl, mn in zip(floors_r, recap_mins)]
+        else:
+            scale = avail_for_rows / min_sum
+            main_heights = [round(max(15.0, h * scale), 2) for h in main_mins]
+            recap_heights = [round(max(15.0, h * scale), 2) for h in recap_mins]
+
+    return main_heights, recap_heights, sig_spacer_h
 
 def _build_chunked_sum_formula(col_letter, row_ranges, chunk_size=20):
     """
@@ -424,7 +490,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             )
         return recap_hdr2 + 1
 
-    def _write_signatory_block(base_r, page_num=None, total_pages=None):
+    def _write_signatory_block(base_r, page_num=None, total_pages=None, sig_spacer_h=18.0):
         """
         Writes the 8-row Certification & Signatory Block + Original/Copy 2 footers
         starting at `base_r` (returns last row `r_f2 = base_r + 7`).
@@ -440,7 +506,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
 
         ws.row_dimensions[r_s1].height = 14.0
         ws.row_dimensions[r_s2].height = 14.0
-        ws.row_dimensions[r_s3].height = 18.0
+        ws.row_dimensions[r_s3].height = sig_spacer_h
         ws.row_dimensions[r_s4].height = 16.0
         ws.row_dimensions[r_s5].height = 14.0
         ws.row_dimensions[r_s6].height = 14.0
@@ -481,7 +547,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         ws.cell(r_s4, 3).font = Font(name="Calibri", size=12.0, bold=True, color="000000")
         ws.cell(r_s4, 3).alignment = Alignment(horizontal="center", vertical="center")
 
-        ws.cell(r_s4, 10, "_________________________        ______")
+        ws.cell(r_s4, 10, "_____________________        ____")
         ws.cell(r_s4, 10).font = Font(name="Calibri", size=11.0, bold=False)
         ws.cell(r_s4, 10).alignment = Alignment(horizontal="left", vertical="center")
 
@@ -489,7 +555,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
         ws.cell(r_s5, 3).font = Font(name="Calibri", size=10.0, bold=False)
         ws.cell(r_s5, 3).alignment = Alignment(horizontal="center", vertical="center")
 
-        ws.cell(r_s5, 10, "Signature Over Printed Name of            Date")
+        ws.cell(r_s5, 10, "Signature Over Printed Name      Date")
         ws.cell(r_s5, 10).font = Font(name="Calibri", size=10.0, bold=False)
         ws.cell(r_s5, 10).alignment = Alignment(horizontal="left", vertical="center")
 
@@ -544,13 +610,42 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
     r_f2_last = cur_r
 
     for p_idx, page_rows in enumerate(main_chunks):
+        is_first_page = (p_idx == 0)
         is_last_page = (p_idx == len(main_chunks) - 1)
+
+        page_recap_rows = _build_recapitulation(page_rows)
+        if not page_recap_rows:
+            page_recap_rows = [("", None, "", "")]
+
+        main_slots_info = []
+        for slot_idx in range(RSMI_ITEMS_PER_PAGE):
+            if slot_idx < len(page_rows):
+                r_ris, _, r_stk, r_desc, _, _ = page_rows[slot_idx]
+                dl = _estimate_rsmi_wrapped_lines(r_desc) if r_desc else 1
+                long_ris = bool(r_stk and len(str(r_ris or "").strip()) > 16)
+                main_slots_info.append((dl, long_ris))
+            else:
+                main_slots_info.append((1, False))
+
+        recap_slots_info = []
+        for slot_idx in range(RSMI_ITEMS_PER_PAGE):
+            if slot_idx < len(page_recap_rows):
+                _, _, r_desc, _ = page_recap_rows[slot_idx]
+                recap_slots_info.append(_estimate_rsmi_wrapped_lines(r_desc) if r_desc else 1)
+            else:
+                recap_slots_info.append(1)
+
+        main_heights, recap_heights, sig_spacer_h = _compute_rsmi_page_heights(
+            main_slots_info,
+            recap_slots_info,
+            is_first_page=is_first_page,
+        )
 
         # 1. Top Banner + Main Table Headers
         cur_r = _write_top_banner(cur_r)
         data_start_r = _write_main_headers(cur_r)
 
-        # 2. 1st Part Data Rows (always standardized to RSMI_ITEMS_PER_PAGE = 16 slots per page)
+        # 2. 1st Part Data Rows (16 slots per page with dynamically balanced heights)
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = data_start_r + slot_idx
             if slot_idx < len(page_rows):
@@ -558,14 +653,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             else:
                 ris_no, rcc_code, stock_no, desc, unit, qty = ("", "", "", "", "", None)
 
-            desc_str = str(desc or "")
-            est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
-            if est_lines == 1:
-                ws.row_dimensions[r].height = 18.0
-            elif est_lines == 2:
-                ws.row_dimensions[r].height = 23.5
-            else:
-                ws.row_dimensions[r].height = 29.5
+            ws.row_dimensions[r].height = main_heights[slot_idx]
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -647,9 +735,6 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
 
         # 4. Recapitulation Section for this Page
         recap_start_row = _write_recap_headers(main_tot_row + 1)
-        page_recap_rows = _build_recapitulation(page_rows)
-        if not page_recap_rows:
-            page_recap_rows = [("", None, "", "")]
 
         for slot_idx in range(RSMI_ITEMS_PER_PAGE):
             r = recap_start_row + slot_idx
@@ -658,14 +743,7 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             else:
                 stock_no, r_qty, desc, unit = ("", None, "", "")
 
-            desc_str = str(desc or "")
-            est_lines = max(1, math.ceil(len(desc_str) / 38.0)) if desc_str else 1
-            if est_lines == 1:
-                ws.row_dimensions[r].height = 18.0
-            elif est_lines == 2:
-                ws.row_dimensions[r].height = 23.5
-            else:
-                ws.row_dimensions[r].height = 29.5
+            ws.row_dimensions[r].height = recap_heights[slot_idx]
 
             ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
@@ -742,7 +820,12 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
             )
 
         # 6. Certification & Signatory Block at the bottom of this page
-        r_f2 = _write_signatory_block(recap_tot_row + 1, page_num=p_idx + 1, total_pages=len(main_chunks))
+        r_f2 = _write_signatory_block(
+            recap_tot_row + 1,
+            page_num=p_idx + 1,
+            total_pages=len(main_chunks),
+            sig_spacer_h=sig_spacer_h,
+        )
         r_f2_last = r_f2
         if not is_last_page:
             ws.row_breaks.append(Break(id=r_f2))
@@ -787,7 +870,7 @@ def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summa
         "RAF Qty (DMR/PROD/DMNP)", "IGF Qty (DMEP/DMC)", "DON Qty (DMD/DMDON)",
         "Item Count", "Total Quantity", "Source File"
     ]
-    ws_sum.row_dimensions[1].height = 24
+    ws_sum.row_dimensions[1].height = 34
     for col_idx, h_text in enumerate(sum_headers, start=1):
         cell = ws_sum.cell(1, col_idx, h_text)
         cell.font = header_font
