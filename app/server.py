@@ -447,9 +447,9 @@ class RISAppHandler(BaseHTTPRequestHandler):
                 month_name = fields.get("month_name", "OCTOBER")
                 year = fields.get("year", "2026")
                 safe_out_name = os.path.basename(fields.get("output_folder_name") or f"OUTPUT_{month_name}_{year}")
-                req_by_name = fields.get("req_by_name", "SABA, LEONARDO CONCHITO SEBASTIAN")
+                req_by_name = fields.get("req_by_name", "LEONARDO CONCHITO S. SABA")
                 req_by_desig = fields.get("req_by_desig", "Administrative Assistant II")
-                app_by_name = fields.get("app_by_name", "SALVE CERTEZA")
+                app_by_name = fields.get("app_by_name", "SALVE CRIZZIA L. CERTEZA")
                 app_by_desig = fields.get("app_by_desig", "Pharmacist V")
                 sig_date = fields.get("sig_date", datetime.date.today().strftime("%m/%d/%Y"))
                 rsmi_custodian_name = fields.get("rsmi_custodian_name", "").strip() or app_by_name

@@ -31,9 +31,9 @@ def run_full_pipeline(
     output_base_dir,
     month_name="OCTOBER",
     year="2026",
-    req_by_name="SABA, LEONARDO CONCHITO SEBASTIAN",
+    req_by_name="LEONARDO CONCHITO S. SABA",
     req_by_desig="Administrative Assistant II",
-    app_by_name="SALVE CERTEZA",
+    app_by_name="SALVE CRIZZIA L. CERTEZA",
     app_by_desig="Pharmacist V",
     sig_date="11/09/2026",
     rsmi_custodian_name=None,
@@ -62,23 +62,26 @@ def run_full_pipeline(
 
     cleaned_dir = os.path.join(output_base_dir, "01_CLEANED_DATA")
     final_dir = os.path.join(output_base_dir, "02_RIS_FINAL")
+    summary_dir = os.path.join(output_base_dir, "04_RIS_COUNT_SUMMARY")
     os.makedirs(cleaned_dir, exist_ok=True)
     os.makedirs(final_dir, exist_ok=True)
+    os.makedirs(summary_dir, exist_ok=True)
 
-    # Clean previous generated files in 01_CLEANED_DATA before Stage 1
-    for old_f in os.listdir(cleaned_dir):
-        old_p = os.path.join(cleaned_dir, old_f)
-        if os.path.isfile(old_p):
-            try:
-                os.remove(old_p)
-            except Exception:
-                pass
+    # Clean previous generated files in 01_CLEANED_DATA and 04_RIS_COUNT_SUMMARY before Stage 1
+    for target_dir in (cleaned_dir, summary_dir):
+        for old_f in os.listdir(target_dir):
+            old_p = os.path.join(target_dir, old_f)
+            if os.path.isfile(old_p):
+                try:
+                    os.remove(old_p)
+                except Exception:
+                    pass
 
     # Load Unit Lookup from Masterlist & RCC Lookup from `rs code.xls`
     _emit(8, 1, "Loading Masterlist units & RCC reference codes...")
     unit_lookup = UnitLookup(masterlist_path)
     rcc_lookup = RccLookup()
-    effective_custodian = str(rsmi_custodian_name or app_by_name or "SALVE CERTEZA").strip()
+    effective_custodian = str(rsmi_custodian_name or app_by_name or "SALVE CRIZZIA L. CERTEZA").strip()
     locked_files = []
 
     # Stage 1A: Clean Consumption files & Combine into 1 unified clean file
@@ -204,7 +207,7 @@ def run_full_pipeline(
                 if os.path.exists(m_root):
                     m_out = os.path.join(m_root, folder_name)
                     if os.path.normcase(os.path.abspath(m_out)) != norm_out:
-                        for sub_name, src_sub in [("01_CLEANED_DATA", cleaned_dir), ("02_RIS_FINAL", final_dir)]:
+                        for sub_name, src_sub in [("01_CLEANED_DATA", cleaned_dir), ("02_RIS_FINAL", final_dir), ("04_RIS_COUNT_SUMMARY", summary_dir)]:
                             dst_sub = os.path.join(m_out, sub_name)
                             os.makedirs(dst_sub, exist_ok=True)
                             for fn in os.listdir(src_sub):
@@ -233,10 +236,17 @@ def run_full_pipeline(
 
     _emit(100, 4, "Completed! All RIS & RSMI files generated.")
 
+    summary_files = sorted([
+        f for f in os.listdir(summary_dir)
+        if os.path.isfile(os.path.join(summary_dir, f)) and f.lower().endswith((".xlsx", ".xls")) and not f.startswith("~$")
+    ]) if os.path.isdir(summary_dir) else []
+
     return {
         "output_base_dir": output_base_dir,
         "cleaned_dir": cleaned_dir,
         "final_dir": final_dir,
+        "summary_dir": summary_dir,
+        "summary_files": summary_files,
         "month_year_label": month_year_label,
         "consumption": {
             "files_cleaned": [r["source_file"] for r in cleaned_consump_results],

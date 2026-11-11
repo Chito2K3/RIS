@@ -114,9 +114,21 @@ class TestDynamicHeightsAndZeroHyphens(unittest.TestCase):
         }]
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            out_xlsx = os.path.join(tmpdir, "RSMI.xlsx")
-            out_xls = os.path.join(tmpdir, "RSMI.xls")
-            res = _write_rsmi_workbook(sample_rows, summary_rows, out_xlsx, out_xls)
+            final_dir = os.path.join(tmpdir, "02_RIS_FINAL")
+            sum_dir = os.path.join(tmpdir, "04_RIS_COUNT_SUMMARY")
+            os.makedirs(final_dir, exist_ok=True)
+            out_xlsx = os.path.join(final_dir, "RSMI.xlsx")
+            out_xls = os.path.join(final_dir, "RSMI.xls")
+            sum_xlsx = os.path.join(sum_dir, "RIS_COUNT_SUMMARY.xlsx")
+            sum_xls = os.path.join(sum_dir, "RIS_COUNT_SUMMARY.xls")
+            res = _write_rsmi_workbook(
+                sample_rows,
+                summary_rows,
+                out_xlsx,
+                out_xls,
+                summary_xlsx=sum_xlsx,
+                summary_xls=sum_xls,
+            )
 
             self.assertEqual(res["breakdown"]["RAF"]["items"], 1)
             self.assertEqual(res["breakdown"]["IGF"]["items"], 2)
@@ -124,15 +136,27 @@ class TestDynamicHeightsAndZeroHyphens(unittest.TestCase):
             self.assertEqual([x["stock_no"] for x in res["unassigned_prefixes"]], ["AFS000001"])
 
             wb = openpyxl.load_workbook(out_xlsx, data_only=False)
+            self.assertEqual(wb.sheetnames, ["RSMI - RAF", "RSMI - IGF", "RSMI - DON"])
             ws_raf = wb["RSMI - RAF"]
+            self.assertFalse(ws_raf.oddFooter.right.text)
             # Check no hyphen placeholders in accounting cells J/K
             for r in range(12, ws_raf.max_row + 1):
                 for c in (10, 11):
                     v = ws_raf.cell(r, c).value
                     self.assertNotEqual(str(v).strip(), "-")
-            # Verify RIS Count Summary row 1 height bump
-            self.assertGreaterEqual(wb["RIS Count Summary"].row_dimensions[1].height, 34)
             wb.close()
+
+            wb_don = openpyxl.load_workbook(os.path.join(final_dir, "RSMI - DON.xlsx"), data_only=False)
+            self.assertEqual(wb_don.sheetnames, ["RSMI"])
+            self.assertFalse(wb_don["RSMI"].oddFooter.right.text)
+            wb_don.close()
+
+            self.assertTrue(os.path.exists(sum_xlsx))
+            self.assertTrue(os.path.exists(sum_xls))
+            wb_sum = openpyxl.load_workbook(sum_xlsx, data_only=False)
+            self.assertEqual(wb_sum.sheetnames, ["RIS Count Summary"])
+            self.assertGreaterEqual(wb_sum["RIS Count Summary"].row_dimensions[1].height, 34)
+            wb_sum.close()
 
     def test_build_ris_workbook_creates_valid_sheet(self):
         ul = UnitLookup()

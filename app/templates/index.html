@@ -898,7 +898,7 @@
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 </div>
                 <div>
-                  <div class="dz-title">Ancillary / Regular Consumption</div>
+                  <div class="dz-title">Overall Consumption</div>
                   <div class="dz-sub">e.g. CONSUMP_ANCILLIARY_OCT_2026.xls</div>
                 </div>
               </div>
@@ -952,7 +952,7 @@
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                 </div>
                 <div>
-                  <div class="dz-title">Dispensing Issuance <span style="font-weight:500; color:var(--muted);">(Optional)</span></div>
+                  <div class="dz-title">Dispensing Issuance</div>
                   <div class="dz-sub">e.g. issuance_disp_oct_2026.csv</div>
                 </div>
               </div>
@@ -1036,7 +1036,7 @@
 
           <div class="form-group">
             <label for="req_by_name">Requested By (Printed Name)</label>
-            <input type="text" id="req_by_name" name="req_by_name" value="SABA, LEONARDO CONCHITO SEBASTIAN" />
+            <input type="text" id="req_by_name" name="req_by_name" value="LEONARDO CONCHITO S. SABA" />
           </div>
 
           <div class="form-group">
@@ -1047,7 +1047,7 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="app_by_name">Approved By (ALL CAPS)</label>
-              <input type="text" id="app_by_name" name="app_by_name" value="SALVE CERTEZA" />
+              <input type="text" id="app_by_name" name="app_by_name" value="SALVE CRIZZIA L. CERTEZA" />
             </div>
             <div class="form-group">
               <label for="app_by_desig">Designation</label>
@@ -1137,6 +1137,19 @@
           <div class="btn-row">
             <button type="button" class="btn-primary btn-sm" onclick="openFolder('final', this)">Open Folder</button>
             <button type="button" class="btn-accent btn-sm" onclick="downloadZip('final', this)">Download Final ZIP</button>
+          </div>
+        </div>
+
+        <div class="folder-row" id="summaryDirRow" style="display:none;">
+          <div>
+            <strong>RIS Count Summary Folder (<code>04_RIS_COUNT_SUMMARY</code>):</strong>
+            <code id="summaryDirPath"></code>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-outline btn-sm" onclick="openFolder('summary', this)">Open Folder</button>
+            <button type="button" class="btn-outline btn-sm" onclick="downloadSummaryFile('RIS_COUNT_SUMMARY.xlsx')">RIS_COUNT_SUMMARY.xlsx</button>
+            <button type="button" class="btn-outline btn-sm" onclick="downloadSummaryFile('RIS_COUNT_SUMMARY.xls')">.xls</button>
+            <button type="button" class="btn-outline btn-sm" onclick="downloadZip('summary')">Download ZIP</button>
           </div>
         </div>
 
@@ -1315,6 +1328,7 @@
     let currentCleanedDir = "";
     let currentFinalDir = "";
     let currentPdfDir = "";
+    let currentSummaryDir = "";
     let currentPopRsmiXlsx = "";
     let currentPopRsmiXls = "";
     let currentPopFundFiles = {};
@@ -1674,9 +1688,17 @@
     function renderResults(r) {
       currentCleanedDir = r.cleaned_dir || currentCleanedDir;
       currentFinalDir = r.final_dir || currentFinalDir;
+      currentSummaryDir = r.summary_dir || r.rsmi?.summary_dir || "";
 
       if (r.cleaned_dir) document.getElementById("cleanedDirPath").textContent = r.cleaned_dir;
       if (r.final_dir) document.getElementById("finalDirPath").textContent = r.final_dir;
+      const sumRow = document.getElementById("summaryDirRow");
+      if (currentSummaryDir) {
+        document.getElementById("summaryDirPath").textContent = currentSummaryDir;
+        sumRow.style.display = "flex";
+      } else {
+        sumRow.style.display = "none";
+      }
 
       if (r.consumption) {
         document.getElementById("statMasterQty").textContent = (r.consumption.total_qty || 0).toLocaleString();
@@ -1719,6 +1741,11 @@
     }
 
     function renderRsmiTable(rsmi) {
+      if (rsmi.summary_dir) {
+        currentSummaryDir = rsmi.summary_dir;
+        document.getElementById("summaryDirPath").textContent = currentSummaryDir;
+        document.getElementById("summaryDirRow").style.display = "flex";
+      }
       currentSummaryRows = rsmi.summary_rows || [];
       document.getElementById("statRisFiles").textContent = (rsmi.total_ris_files || 0).toLocaleString();
       document.getElementById("statRsmiRows").textContent = (rsmi.total_medicine_rows || 0).toLocaleString();
@@ -1949,8 +1976,20 @@
       window.location.href = `/api/download_file?folder=${encodeURIComponent(currentPdfDir)}&file=${encodeURIComponent(filename)}`;
     }
 
+    function downloadSummaryFile(filename) {
+      if (!currentSummaryDir || !filename) return;
+      window.location.href = `/api/download_file?folder=${encodeURIComponent(currentSummaryDir)}&file=${encodeURIComponent(filename)}`;
+    }
+
+    function _resolveFolderTarget(which) {
+      if (which === "cleaned") return currentCleanedDir;
+      if (which === "pdf") return currentPdfDir;
+      if (which === "summary") return currentSummaryDir;
+      return currentFinalDir;
+    }
+
     async function openFolder(which, btnEl) {
-      const target = which === "cleaned" ? currentCleanedDir : (which === "pdf" ? currentPdfDir : currentFinalDir);
+      const target = _resolveFolderTarget(which);
       if (!target) return;
       const orig = btnEl.innerHTML;
       btnEl.disabled = true;
@@ -1969,7 +2008,7 @@
     }
 
     function downloadZip(which) {
-      const target = which === "cleaned" ? currentCleanedDir : (which === "pdf" ? currentPdfDir : currentFinalDir);
+      const target = _resolveFolderTarget(which);
       if (!target) return;
       window.location.href = `/api/download_zip?folder=${encodeURIComponent(target)}`;
     }

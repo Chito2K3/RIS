@@ -99,7 +99,7 @@ SKIP_FILES = {
 }
 
 DEFAULT_RCC = "13-001-14-00012-03-02-33"
-DEFAULT_CUSTODIAN = "SALVE CERTEZA"
+DEFAULT_CUSTODIAN = "SALVE CRIZZIA L. CERTEZA"
 _RCC_LOOKUP = RccLookup()
 
 FUND_CLUSTERS = [
@@ -852,11 +852,8 @@ def _populate_rsmi_sheet(ws, rsmi_rows, fund_cluster_label="Internally Generated
     ws.page_margins.bottom = 0.15
     ws.page_margins.header = 0.0
     ws.page_margins.footer = 0.0
-    ws.oddFooter.right.text = "&P of &N"
-    ws.oddFooter.right.font = "Calibri"
-    ws.oddFooter.right.size = 10
 
-def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary"):
+def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary", reuse_active=False):
     """
     Creates Sheet 'RIS Count Summary' detailing per-RIS item counts, total quantity,
     and a clear breakdown across RAF, IGF, and DON Fund Clusters.
@@ -871,7 +868,8 @@ def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summa
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     align_right = Alignment(horizontal="right", vertical="center")
 
-    ws_sum = out_wb.create_sheet(title=title)
+    ws_sum = out_wb.active if reuse_active else out_wb.create_sheet(title=title)
+    ws_sum.title = title
     sum_headers = [
         "RIS No.", "Office / Ward",
         "RAF Qty (DMR/PROD/DMNP)", "IGF Qty (DMEP/DMC)", "DON Qty (DMD/DMDON)",
@@ -965,7 +963,7 @@ def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summa
 
     ws_sum.column_dimensions["A"].width = 24
     ws_sum.column_dimensions["B"].width = 34
-    ws_sum.column_dimensions["C"].width = 16
+    ws_sum.column_dimensions["C"].width = 20
     ws_sum.column_dimensions["D"].width = 19
     ws_sum.column_dimensions["E"].width = 19
     ws_sum.column_dimensions["F"].width = 13
@@ -986,6 +984,23 @@ def _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summa
     ws_sum.page_margins.header = 0.25
     ws_sum.page_margins.footer = 0.25
 
+def _save_standalone_summary_workbook(
+    summary_rows,
+    rsmi_rows,
+    xlsx_path,
+    xls_path=None,
+    locked_files=None,
+    title="RIS Count Summary",
+):
+    """Saves `RIS Count Summary` as its own standalone workbook in `04_RIS_COUNT_SUMMARY/`."""
+    os.makedirs(os.path.dirname(os.path.abspath(xlsx_path)), exist_ok=True)
+    wb_sum = openpyxl.Workbook()
+    _write_summary_sheet(wb_sum, summary_rows, rsmi_rows, title=title, reuse_active=True)
+    safe_save_workbook(wb_sum, xlsx_path, locked_files=locked_files)
+    if xls_path:
+        safe_save_workbook(wb_sum, xls_path, locked_files=locked_files)
+    wb_sum.close()
+
 def _write_rsmi_workbook(
     rsmi_rows,
     summary_rows,
@@ -993,18 +1008,20 @@ def _write_rsmi_workbook(
     output_xls=None,
     custodian_name=DEFAULT_CUSTODIAN,
     standalone_prefix="RSMI",
+    summary_xlsx=None,
+    summary_xls=None,
 ):
     """
     Generates the official ARMMC RSMI deliverables segregated strictly by Fund Cluster:
       1. Consolidated Master Workbook (`output_xlsx` & `output_xls`):
-         - Sheet 1: `RSMI - RAF` (Row 7: Regular Agency Fund (RAF), only DMR items)
-         - Sheet 2: `RSMI - IGF` (Row 7: Internally Generated Fund (IGF), only DMEP, DMC, DMCSP items)
-         - Sheet 3: `RSMI - DON` (Row 7: Donation Fund (DON), only DMD, DMDON items)
-         - Sheet 4: `RIS Count Summary` (Full breakdown across all 3 funds)
+         - Sheet 1: `RSMI - RAF` (Regular Agency Fund (RAF))
+         - Sheet 2: `RSMI - IGF` (Internally Generated Fund (IGF))
+         - Sheet 3: `RSMI - DON` (Donation Fund (DON))
       2. Standalone Dedicated Workbooks for each Fund Cluster in the same directory:
-         - `{prefix} - RAF.xlsx` & `.xls`
-         - `{prefix} - IGF.xlsx` & `.xls`
-         - `{prefix} - DON.xlsx` & `.xls`
+         - `{prefix} - RAF.xlsx` & `.xls` (RSMI sheet only)
+         - `{prefix} - IGF.xlsx` & `.xls` (RSMI sheet only)
+         - `{prefix} - DON.xlsx` & `.xls` (RSMI sheet only)
+      3. Separate `RIS Count Summary` workbook when `summary_xlsx` is provided.
     """
     # 1. Segregate rows by Fund Cluster
     cluster_buckets = {"RAF": [], "IGF": [], "DON": []}
@@ -1040,8 +1057,6 @@ def _write_rsmi_workbook(
             custodian_name=custodian_name,
         )
 
-    _write_summary_sheet(out_wb, summary_rows, rsmi_rows, title="RIS Count Summary")
-
     safe_save_workbook(out_wb, output_xlsx, locked_files=locked_files)
     if output_xls:
         safe_save_workbook(out_wb, output_xls, locked_files=locked_files)
@@ -1071,7 +1086,6 @@ def _write_rsmi_workbook(
             fund_cluster_label=fc_label,
             custodian_name=custodian_name,
         )
-        _write_summary_sheet(s_wb, summary_rows, rows_in_cluster, title="RIS Count Summary")
 
         safe_save_workbook(s_wb, single_xlsx_path, locked_files=locked_files)
         if single_xls_path:
@@ -1089,10 +1103,21 @@ def _write_rsmi_workbook(
             "label": fc_label,
         }
 
+    if summary_xlsx:
+        _save_standalone_summary_workbook(
+            summary_rows=summary_rows,
+            rsmi_rows=rsmi_rows,
+            xlsx_path=summary_xlsx,
+            xls_path=summary_xls,
+            locked_files=locked_files,
+        )
+
     grand_qty = sum(int(float(r[5])) for r in rsmi_rows)
     return {
         "grand_qty": grand_qty,
         "fund_files": fund_files,
+        "summary_xlsx": summary_xlsx,
+        "summary_xls": summary_xls,
         "locked_files": locked_files,
         "unassigned_prefixes": list(unassigned_seen.values()),
         "breakdown": {
@@ -1150,6 +1175,10 @@ def generate_populated_rsmi(
         "filename": master_filename,
     }]
 
+    summary_dir = os.path.join(os.path.dirname(os.path.abspath(final_dir)), "04_RIS_COUNT_SUMMARY")
+    sum_xlsx_path = os.path.join(summary_dir, "RIS_COUNT_SUMMARY_POPULATED.xlsx")
+    sum_xls_path = os.path.join(summary_dir, "RIS_COUNT_SUMMARY_POPULATED.xls")
+
     write_res = _write_rsmi_workbook(
         rows,
         summary_rows,
@@ -1157,6 +1186,8 @@ def generate_populated_rsmi(
         pop_xls_path,
         custodian_name=custodian_name,
         standalone_prefix=base_prefix,
+        summary_xlsx=sum_xlsx_path,
+        summary_xls=sum_xls_path,
     )
 
     return {
@@ -1170,6 +1201,9 @@ def generate_populated_rsmi(
         "item_count": item_count,
         "total_qty": total_qty,
         "fund_files": write_res["fund_files"],
+        "summary_dir": summary_dir,
+        "summary_xlsx": "RIS_COUNT_SUMMARY_POPULATED.xlsx",
+        "summary_xls": "RIS_COUNT_SUMMARY_POPULATED.xls",
         "breakdown": write_res["breakdown"],
         "locked_files": write_res["locked_files"],
         "unassigned_prefixes": write_res["unassigned_prefixes"],
@@ -1255,6 +1289,10 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
             **fc_totals,
         })
 
+    summary_dir = os.path.join(os.path.dirname(os.path.abspath(final_dir)), "04_RIS_COUNT_SUMMARY")
+    sum_xlsx_path = os.path.join(summary_dir, "RIS_COUNT_SUMMARY.xlsx")
+    sum_xls_path = os.path.join(summary_dir, "RIS_COUNT_SUMMARY.xls")
+
     write_res = _write_rsmi_workbook(
         rsmi_rows,
         summary_rows,
@@ -1262,11 +1300,22 @@ def generate_rsmi_from_folder(final_dir, master_filename=None, excluded_files=No
         output_xls,
         custodian_name=custodian_name,
         standalone_prefix="RSMI",
+        summary_xlsx=sum_xlsx_path,
+        summary_xls=sum_xls_path,
     )
+
+    existing_sum_files = sorted([
+        f for f in os.listdir(summary_dir)
+        if os.path.isfile(os.path.join(summary_dir, f)) and f.lower().endswith((".xlsx", ".xls")) and not f.startswith("~$")
+    ]) if os.path.isdir(summary_dir) else []
 
     return {
         "rsmi_path": output_xlsx,
         "rsmi_xls_path": output_xls,
+        "summary_dir": summary_dir,
+        "summary_files": existing_sum_files,
+        "summary_xlsx": "RIS_COUNT_SUMMARY.xlsx",
+        "summary_xls": "RIS_COUNT_SUMMARY.xls",
         "total_ris_files": len(summary_rows),
         "total_medicine_rows": len(rsmi_rows),
         "grand_total_qty": write_res["grand_qty"],
@@ -1396,11 +1445,18 @@ def inspect_existing_output_folder(final_dir):
     output_base_dir = os.path.dirname(final_dir)
     cleaned_dir = os.path.join(output_base_dir, "01_CLEANED_DATA")
     pdf_dir = os.path.join(output_base_dir, "03_PRINT_PDF")
+    summary_dir = os.path.join(output_base_dir, "04_RIS_COUNT_SUMMARY")
     existing_pdfs = []
     if os.path.isdir(pdf_dir):
         existing_pdfs = sorted([
             f for f in os.listdir(pdf_dir)
             if f.lower().endswith(".pdf") and os.path.isfile(os.path.join(pdf_dir, f))
+        ])
+    existing_summaries = []
+    if os.path.isdir(summary_dir):
+        existing_summaries = sorted([
+            f for f in os.listdir(summary_dir)
+            if f.lower().endswith((".xlsx", ".xls")) and not f.startswith("~$") and os.path.isfile(os.path.join(summary_dir, f))
         ])
 
     return {
@@ -1409,6 +1465,8 @@ def inspect_existing_output_folder(final_dir):
         "final_dir": final_dir,
         "pdf_dir": pdf_dir if existing_pdfs else "",
         "existing_pdfs": existing_pdfs,
+        "summary_dir": summary_dir if os.path.isdir(summary_dir) else "",
+        "summary_files": existing_summaries,
         "excluded_files": sorted(excluded_set),
         "consumption": {
             "master_ris_filename": master_filename,
